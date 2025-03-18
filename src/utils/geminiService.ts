@@ -26,7 +26,7 @@ export class GeminiService {
     }
 
     try {
-      const model = this.geminiClient.getGenerativeModel({ model: "gemini-pro" });
+      const model = this.geminiClient.getGenerativeModel({ model: "gemini-2.0-flash" });
       
       const prompt = `Please provide a detailed research overview on the following topic: ${topic}. 
                      Include key points, potential research directions, and relevant academic areas to explore.`;
