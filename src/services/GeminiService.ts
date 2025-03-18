@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ErrorHandler } from "@/utils/errorHandler";
 import { CacheService } from "./CacheService";
+import { mongoDBService } from "./MongoDBService";
 
 class GeminiService {
   private genAI: GoogleGenerativeAI;
@@ -9,15 +10,40 @@ class GeminiService {
   private readonly MAX_TOKENS = 8192;
   private initialized: boolean = false;
   private cache: CacheService;
+  private readonly API_KEY_SETTING = "gemini_api_key";
 
   constructor() {
     this.cache = CacheService.getInstance();
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    
-    if (apiKey) {
-      this.initialize(apiKey);
-    } else {
-      console.warn("Gemini API key not found in environment variables");
+    this.initializeFromDB();
+  }
+
+  private async initializeFromDB(): Promise<void> {
+    try {
+      const apiKey = await mongoDBService.getSetting(this.API_KEY_SETTING);
+      
+      if (apiKey) {
+        this.initialize(apiKey);
+      } else {
+        const envApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        if (envApiKey) {
+          this.initialize(envApiKey);
+          // Save the environment key to DB for future use
+          await this.saveApiKey(envApiKey);
+        } else {
+          console.warn("Gemini API key not found in database or environment variables");
+        }
+      }
+    } catch (error) {
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError);
+      
+      // Fall back to environment variable if DB fails
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (apiKey) {
+        this.initialize(apiKey);
+      } else {
+        console.warn("Gemini API key not found in environment variables");
+      }
     }
   }
 
@@ -50,6 +76,28 @@ class GeminiService {
         code: 'AUTH_ERROR',
         message: "Gemini service is not initialized. Please set a valid API key."
       });
+    }
+  }
+
+  public async getApiKey(): Promise<string | null> {
+    try {
+      return await mongoDBService.getSetting(this.API_KEY_SETTING);
+    } catch (error) {
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError);
+      return null;
+    }
+  }
+
+  public async saveApiKey(apiKey: string): Promise<boolean> {
+    try {
+      await mongoDBService.setSetting(this.API_KEY_SETTING, apiKey);
+      this.initialize(apiKey);
+      return true;
+    } catch (error) {
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError);
+      return false;
     }
   }
 

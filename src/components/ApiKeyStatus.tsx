@@ -1,91 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { CheckCircle, Info, AlertTriangle } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { geminiService } from "../services/GeminiService";
+import { CheckCircle, AlertTriangle, Info } from "lucide-react";
+import { LoadingButton } from "@/components/ui/loading";
+import { useApiKey } from "@/hooks/useApiKey";
 
 export function ApiKeyStatus() {
-  const [isValid, setIsValid] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [apiKey, setApiKey] = useState<string>("");
-  const [showInput, setShowInput] = useState<boolean>(!geminiService.isInitialized());
-  const { toast } = useToast();
+  const [showInput, setShowInput] = useState<boolean>(false);
+  const { isValid, isLoading, apiKey, setApiKey, checkApiKey, saveApiKey } = useApiKey();
 
-  useEffect(() => {
-    checkApiKey();
-  }, []);
-
-  const checkApiKey = async () => {
-    try {
-      setIsLoading(true);
-      
-      if (!geminiService.isInitialized()) {
-        setIsValid(false);
-        setShowInput(true);
-        return;
-      }
-      
-      // Make a simple request to the Gemini API to check if the key works
-      const response = await geminiService.getResearchAssistance('test connection');
-      setIsValid(!response.error);
-      
-      if (!response.error) {
-        toast({
-          title: "API Key Valid",
-          description: "Gemini API key is working correctly!",
-          duration: 3000,
-        });
-      } else {
-        toast({
-          title: "API Key Issue",
-          description: "There's an issue with the Gemini API key. Please verify it's correct.",
-          variant: "destructive",
-          duration: 5000,
-        });
-        setShowInput(true);
-      }
-    } catch (error) {
-      console.error('Error checking API key:', error);
-      setIsValid(false);
-      setShowInput(true);
-      toast({
-        title: "API Key Error",
-        description: "Failed to validate the Gemini API key.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSaveApiKey = () => {
-    if (!apiKey.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid API key",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      geminiService.initialize(apiKey.trim());
-      setApiKey("");
-      checkApiKey();
+  const handleSaveClick = async () => {
+    const success = await saveApiKey(apiKey);
+    if (success) {
       setShowInput(false);
-      toast({
-        title: "Success",
-        description: "API key saved successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to set API key",
-        variant: "destructive",
-      });
     }
   };
 
@@ -124,7 +52,7 @@ export function ApiKeyStatus() {
             onClick={() => setShowInput(!showInput)}
             disabled={isLoading}
           >
-            {showInput ? "Hide" : "Change Key"}
+            {isValid ? (showInput ? "Hide" : "Change Key") : "Add Key"}
           </Button>
         </div>
       </div>
@@ -138,8 +66,13 @@ export function ApiKeyStatus() {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               className="flex-1"
+              disabled={isLoading}
             />
-            <Button onClick={handleSaveApiKey} disabled={isLoading || !apiKey.trim()}>
+            <Button 
+              onClick={handleSaveClick} 
+              disabled={isLoading || !apiKey.trim()}
+            >
+              {isLoading ? <LoadingButton className="mr-2" /> : null}
               Save Key
             </Button>
           </div>
@@ -154,7 +87,7 @@ export function ApiKeyStatus() {
           <Info className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm text-amber-800">
-              <span className="font-medium">Note:</span> Your API key is required to use the AI features in this application. The key is stored in your browser and never sent to our servers.
+              <span className="font-medium">Note:</span> Your API key is required to use the AI features in this application. The key is stored securely in the database and not exposed to external services.
             </p>
           </div>
         </div>
