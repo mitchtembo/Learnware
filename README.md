@@ -1,69 +1,116 @@
-# Welcome to your Lovable project
+# Learnware Grove
 
-## Project info
+A modern learning and research platform built with React, TypeScript, and Vite, featuring AI-powered research assistance and comprehensive study tools.
 
-**URL**: https://lovable.dev/projects/5b63ae91-52d2-4c21-87b4-32b46d63cfb1
+## Features
 
-## How can I edit this code?
+- **Course Management**: Organize and track your courses
+- **Note Taking**: Create and manage study notes
+- **Research Assistant**: AI-powered research help using Google's Gemini API
+- **Study Tools**: Comprehensive study and learning features
+- **Smart Search**: Advanced search functionality across your learning materials
+- **Modern UI**: Beautiful and responsive interface using Shadcn UI components
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend Framework**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **UI Components**: Shadcn UI (Radix UI)
+- **State Management**: React Query
+- **Routing**: React Router DOM
+- **AI Integration**: Google Generative AI (Gemini)
+- **Form Handling**: React Hook Form with Zod validation
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/5b63ae91-52d2-4c21-87b4-32b46d63cfb1) and start prompting.
+## Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node.js (Latest LTS version recommended)
+- npm or Bun package manager
+- Google Gemini API key (for research features)
 
-**Use your preferred IDE**
+## Getting Started
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/learnware-grove.git
+   cd learnware-grove
+   ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+2. Install dependencies:
+   ```bash
+   npm install
+   # or
+   bun install
+   ```
 
-Follow these steps:
+3. Create a `.env` file in the root directory and add your Gemini API key:
+   ```env
+   VITE_GEMINI_API_KEY=your_api_key_here
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+4. Start the development server:
+   ```bash
+   npm run dev
+   # or
+   bun dev
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+5. Open your browser and navigate to `http://localhost:5173`
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Project Structure
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+src/
+├── components/     # Reusable UI components
+├── hooks/         # Custom React hooks
+├── layouts/       # Page layout components
+├── lib/          # Utility libraries and configurations
+├── pages/        # Main application pages
+├── utils/        # Helper functions and services
+└── App.tsx       # Main application component
 ```
 
-**Edit a file directly in GitHub**
+## Available Scripts
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run build:dev` - Build for development
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
 
-**Use GitHub Codespaces**
+## Features in Detail
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Research Assistant
+- AI-powered research help using Google's Gemini API
+- Deep research capabilities
+- Literature review tools
+- Interactive research sessions
 
-## What technologies are used for this project?
+### Course Management
+- Course organization and tracking
+- Progress monitoring
+- Resource management
 
-This project is built with .
+### Note Taking
+- Rich text editing
+- Organization tools
+- Search functionality
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Study Tools
+- Study planning
+- Progress tracking
+- Learning analytics
 
-## How can I deploy this project?
+## Contributing
 
-Simply open [Lovable](https://lovable.dev/projects/5b63ae91-52d2-4c21-87b4-32b46d63cfb1) and click on Share -> Publish.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## I want to use a custom domain - is that possible?
+## License
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- [Shadcn UI](https://ui.shadcn.com/) for the beautiful component library
+- [Google Generative AI](https://ai.google.dev/) for the Gemini API
+- All other open-source libraries and their contributors
