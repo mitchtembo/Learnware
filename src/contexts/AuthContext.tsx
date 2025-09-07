@@ -19,9 +19,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const supabase = createClient()
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
@@ -39,9 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase.auth])
+  }, [])
 
   const signOut = async () => {
+    if (typeof window === "undefined") return
+    const supabase = createClient()
     await supabase.auth.signOut()
   }
 
@@ -58,6 +63,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
+    if (typeof window === "undefined") {
+      return {
+        user: null,
+        session: null,
+        loading: true,
+        signOut: async () => {},
+      }
+    }
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context

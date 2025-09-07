@@ -26,8 +26,6 @@ import {
 import { useToast } from "../src/components/ui/use-toast"
 import { Badge } from "../src/components/ui/badge"
 import { useAuth } from "../src/contexts/AuthContext"
-import { TooltipProvider } from "../src/components/ui/tooltip"
-import { AuthProvider } from "../src/contexts/AuthContext"
 
 const IndexContent = () => {
   const [courses, setCourses] = useState<Course[]>([])
@@ -310,11 +308,5 @@ const IndexContent = () => {
 }
 
 export default function Home() {
-  return (
-    <AuthProvider>
-      <TooltipProvider>
-        <IndexContent />
-      </TooltipProvider>
-    </AuthProvider>
-  )
+  return <IndexContent />
 }
