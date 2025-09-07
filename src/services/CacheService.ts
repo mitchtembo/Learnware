@@ -41,6 +41,20 @@ export class CacheService {
     return item.value as T
   }
 
+  getAll<T>(prefix: string): T[] {
+    const items: T[] = [];
+    for (const [key, item] of this.cache.entries()) {
+      if (key.startsWith(prefix)) {
+        if (Date.now() > item.timestamp) {
+          this.cache.delete(key);
+        } else {
+          items.push(item.value as T);
+        }
+      }
+    }
+    return items;
+  }
+
   has(key: string): boolean {
     const item = this.cache.get(key)
     if (!item) return false

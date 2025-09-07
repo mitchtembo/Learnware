@@ -35,6 +35,7 @@ const formSchema = z.object({
   startDate: z.date(),
   endDate: z.date(),
   category: z.string(),
+  topic: z.string(),
   difficulty: z.string(),
 });
 
@@ -61,6 +62,7 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
       code: initialData?.code || "",
       description: initialData?.description || "",
       category: initialData?.category || "",
+      topic: initialData?.topic || "",
       difficulty: initialData?.difficulty || "",
       startDate: startDate || new Date(),
       endDate: endDate || new Date(),
@@ -165,6 +167,20 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
                     </div>
                   )}
                 </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="topic"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Topic</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g. Frontend Development" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

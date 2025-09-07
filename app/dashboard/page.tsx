@@ -1,147 +1,284 @@
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+"use client"
+
+import { useState, useEffect } from "react"
+import MainLayout from "@/layouts/MainLayout"
+import { apiService } from "@/services/ApiServiceAdapter"
+import type { Course } from "@/services/DataService"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import Image from "next/image"
-import { BookOpen, Brain, Users, TrendingUp, LogOut } from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { useRouter } from "next/navigation"
+import CourseCard from "@/components/CourseCard"
+import {
+  BookOpen,
+  Brain,
+  PlusCircle,
+  ArrowRight,
+  GraduationCap,
+  LightbulbIcon,
+  Book,
+  PenLine,
+  Search,
+  Award,
+  Zap,
+  Check,
+  ScrollText,
+} from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/contexts/AuthContext"
 
-export default async function DashboardPage() {
-  const supabase = await createClient()
+export default function DashboardPage() {
+  const [courses, setCourses] = useState<Course[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState({
+    totalCourses: 0,
+    completedCourses: 0,
+    totalMaterials: 0,
+    totalQuizzes: 0,
+    averageProgress: 0,
+  })
+  const router = useRouter()
+  const { toast } = useToast()
+  const { user, loading: authLoading } = useAuth()
 
-  const { data, error } = await supabase.auth.getUser()
-  if (error || !data?.user) {
-    redirect("/auth/login")
-  }
+  useEffect(() => {
+    const fetchData = async () => {
+      if (authLoading) return // Wait for auth to load
 
-  const handleSignOut = async () => {
-    "use server"
-    const supabase = await createClient()
-    await supabase.auth.signOut()
-    redirect("/auth/login")
-  }
+      try {
+        setIsLoading(true)
+        await apiService.initialize()
+
+        if (user) {
+          const fetchedCourses = await apiService.getCourses()
+          setCourses(fetchedCourses)
+
+          const completed = fetchedCourses.filter((c) => c.progress === 100).length
+          const totalMaterials = fetchedCourses.reduce((acc, course) => acc + (course.studyMaterials?.length || 0), 0)
+          const totalQuizzes = fetchedCourses.reduce((acc, course) => acc + (course.quizzes?.length || 0), 0)
+          const avgProgress =
+            fetchedCourses.length > 0
+              ? fetchedCourses.reduce((acc, c) => acc + c.progress, 0) / fetchedCourses.length
+              : 0
+
+          setStats({
+            totalCourses: fetchedCourses.length,
+            completedCourses: completed,
+            totalMaterials,
+            totalQuizzes,
+            averageProgress: Math.round(avgProgress),
+          })
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load dashboard data.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [toast, user, authLoading])
+
+  const recentCourses = [...courses].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 3)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-card to-muted">
-      {/* Header */}
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/images/learnware-logo.jpeg"
-              alt="Learnware Logo"
-              width={40}
-              height={40}
-              className="rounded-lg"
-            />
-            <h1 className="text-xl font-bold text-foreground">Learnware</h1>
+    <MainLayout>
+      <div className="space-y-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold">Learnware Grove</h1>
+              <Badge variant="outline">Beta</Badge>
+            </div>
+            <p className="text-muted-foreground mt-1">Study faster. Understand deeper.</p>
           </div>
-
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Welcome, {data.user.user_metadata?.full_name || data.user.email}
-            </span>
-            <form action={handleSignOut}>
-              <Button variant="outline" size="sm" type="submit">
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-            </form>
+          <div className="flex gap-3">
+            <Button onClick={() => router.push("/courses/new")}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              New Course
+            </Button>
+            <Button variant="outline" onClick={() => router.push("/notes/new")}>
+              <PenLine className="h-4 w-4 mr-2" />
+              New Note
+            </Button>
           </div>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="space-y-8">
-          {/* Welcome Section */}
-          <div className="text-center space-y-4">
-            <h2 className="text-3xl font-bold text-foreground">Welcome to Your AI Study Dashboard</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Your personalized learning journey starts here. Explore courses, track progress, and enhance your skills
-              with AI-powered assistance.
-            </p>
+        {isLoading || authLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
-
-          {/* Dashboard Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                  <CardTitle className="text-lg">My Courses</CardTitle>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="p-4 flex items-center gap-3">
+                <div className="bg-primary/10 p-3 rounded-full">
+                  <Book className="h-6 w-6 text-primary" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground mb-1">0</div>
-                <CardDescription>Enrolled courses</CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-accent" />
-                  <CardTitle className="text-lg">AI Sessions</CardTitle>
+                <div>
+                  <div className="text-2xl font-bold">{stats.totalCourses}</div>
+                  <div className="text-sm text-muted-foreground">Total Courses</div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground mb-1">0</div>
-                <CardDescription>Study sessions completed</CardDescription>
-              </CardContent>
-            </Card>
+              </Card>
 
-            <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                  <CardTitle className="text-lg">Progress</CardTitle>
+              <Card className="p-4 flex items-center gap-3">
+                <div className="bg-green-100 p-3 rounded-full">
+                  <Check className="h-6 w-6 text-green-600" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground mb-1">0%</div>
-                <CardDescription>Overall completion</CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50 shadow-lg hover:shadow-xl transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-accent" />
-                  <CardTitle className="text-lg">Community</CardTitle>
+                <div>
+                  <div className="text-2xl font-bold">{stats.completedCourses}</div>
+                  <div className="text-sm text-muted-foreground">Completed</div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground mb-1">0</div>
-                <CardDescription>Study groups joined</CardDescription>
-              </CardContent>
-            </Card>
-          </div>
+              </Card>
 
-          {/* Quick Actions */}
-          <Card className="border-border/50 shadow-lg">
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Get started with your learning journey</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button className="h-12 bg-primary hover:bg-primary/90">
-                  <BookOpen className="w-4 h-4 mr-2" />
-                  Browse Courses
-                </Button>
-                <Button variant="outline" className="h-12 bg-transparent">
-                  <Brain className="w-4 h-4 mr-2" />
-                  Start AI Session
-                </Button>
-                <Button variant="outline" className="h-12 bg-transparent">
-                  <Users className="w-4 h-4 mr-2" />
-                  Join Study Group
-                </Button>
+              <Card className="p-4 flex items-center gap-3">
+                <div className="bg-blue-100 p-3 rounded-full">
+                  <ScrollText className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{stats.totalMaterials}</div>
+                  <div className="text-sm text-muted-foreground">Study Materials</div>
+                </div>
+              </Card>
+
+              <Card className="p-4 flex items-center gap-3">
+                <div className="bg-purple-100 p-3 rounded-full">
+                  <Brain className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{stats.totalQuizzes}</div>
+                  <div className="text-sm text-muted-foreground">Quizzes</div>
+                </div>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <Card className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5 text-primary" />
+                      <h2 className="text-xl font-semibold">Recent Courses</h2>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => router.push("/courses")}>
+                      View All
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {recentCourses.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-4">
+                      {recentCourses.map((course) => (
+                        <CourseCard key={course.id} course={course} compact={true} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p>No courses found. Create your first course to get started!</p>
+                      <Button className="mt-4" onClick={() => router.push("/courses/new")}>
+                        Create a Course
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+
+                <Card className="p-6">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Zap className="h-5 w-5 text-primary" />
+                    <h2 className="text-xl font-semibold">Ready-to-Use AI Features</h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="border rounded-lg p-4">
+                      <LightbulbIcon className="h-8 w-8 text-yellow-500 mb-2" />
+                      <h3 className="font-medium mb-1">Dynamic Content Generation</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Create course materials and study guides using pre-configured Gemini AI integration
+                      </p>
+                    </div>
+
+                    <div className="border rounded-lg p-4">
+                      <Brain className="h-8 w-8 text-purple-500 mb-2" />
+                      <h3 className="font-medium mb-1">Research Assistant</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Get answers for complex topics with Google's Gemini API ready out of the box
+                      </p>
+                    </div>
+
+                    <div className="border rounded-lg p-4">
+                      <Search className="h-8 w-8 text-blue-500 mb-2" />
+                      <h3 className="font-medium mb-1">Web Integration</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Supplement your learning with relevant web resources automatically gathered for you
+                      </p>
+                    </div>
+
+                    <div className="border rounded-lg p-4">
+                      <Award className="h-8 w-8 text-green-500 mb-2" />
+                      <h3 className="font-medium mb-1">Progress Tracking</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Track your learning progress with visual indicators and completion metrics
+                      </p>
+                    </div>
+                  </div>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    </div>
+
+              <div className="space-y-6">
+                <Card className="p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <GraduationCap className="h-5 w-5 text-primary" />
+                    <h2 className="text-xl font-semibold">Getting Started</h2>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex gap-3 items-start">
+                      <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-xs font-medium">1</span>
+                      </div>
+                      <p className="text-sm">Create a new course to begin your learning journey</p>
+                    </div>
+
+                    <div className="flex gap-3 items-start">
+                      <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-xs font-medium">2</span>
+                      </div>
+                      <p className="text-sm">Generate AI-powered content for comprehensive learning</p>
+                    </div>
+
+                    <div className="flex gap-3 items-start">
+                      <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-xs font-medium">3</span>
+                      </div>
+                      <p className="text-sm">Create study materials and quizzes to test your knowledge</p>
+                    </div>
+
+                    <div className="flex gap-3 items-start">
+                      <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-xs font-medium">4</span>
+                      </div>
+                      <p className="text-sm">Track your progress and continue your learning journey</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <Button className="w-full" onClick={() => router.push("/courses/new")}>
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Start Your First Course
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </MainLayout>
   )
 }
