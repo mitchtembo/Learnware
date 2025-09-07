@@ -1,6 +1,5 @@
 import { ErrorHandler } from '@/utils/errorHandler';
-import { mongoDBService } from './MongoDBService';
-import { databaseService } from './DatabaseService';
+import { cacheService } from './CacheService';
 
 export interface Course {
   id: string;
@@ -40,13 +39,6 @@ class DataService {
 
   private async initialize(): Promise<void> {
     try {
-      // Check if we need to migrate from IndexedDB
-      const migrationCompleteToMongo = await mongoDBService.getSetting('migrationCompleteToMongo');
-      
-      if (!migrationCompleteToMongo) {
-        await this.migrateFromIndexedDBToMongoDB();
-      }
-      
       // Initialize with sample data if empty
       await this.initializeIfEmpty();
       
@@ -55,29 +47,6 @@ class DataService {
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError);
       this.initialized = false;
-    }
-  }
-
-  private async migrateFromIndexedDBToMongoDB(): Promise<void> {
-    try {
-      // Get data from IndexedDB
-      const indexedDBCourses = await databaseService.getAll<Course>('courses');
-      const indexedDBNotes = await databaseService.getAll<Course>('notes');
-
-      // Migrate to MongoDB
-      await mongoDBService.migrateFromLocal({
-        courses: indexedDBCourses,
-        notes: indexedDBNotes
-      });
-
-      // Set migration complete flag
-      await mongoDBService.setSetting('migrationCompleteToMongo', true);
-      
-      console.log('Migration from IndexedDB to MongoDB complete');
-    } catch (error) {
-      const appError = ErrorHandler.handle(error);
-      ErrorHandler.logError(appError);
-      throw appError;
     }
   }
 
@@ -92,10 +61,9 @@ class DataService {
     await this.ensureInitialized();
     
     try {
-      const courses = await mongoDBService.getAllCourses();
+      const courses = await cacheService.getAll<Course>('courses');
       return courses.map(course => ({
         ...course,
-        id: course._id.toString(),
         startDate: new Date(course.startDate),
         endDate: new Date(course.endDate),
         createdAt: new Date(course.createdAt),
@@ -112,12 +80,11 @@ class DataService {
     await this.ensureInitialized();
     
     try {
-      const course = await mongoDBService.getCourseById(id);
+      const course = await cacheService.get<Course>('courses', id);
       if (!course) return undefined;
       
       return {
         ...course,
-        id: course._id.toString(),
         startDate: new Date(course.startDate),
         endDate: new Date(course.endDate),
         createdAt: new Date(course.createdAt),
@@ -138,48 +105,26 @@ class DataService {
     try {
       if (!course.id) {
         // Create new course
-        const newCourse: any = {
+        const newCourse: Course = {
           ...course,
+          id: this.generateId(),
           progress: 0,
           studentsEnrolled: 0,
           createdAt: now,
           updatedAt: now
         };
         
-        const createdCourse = await mongoDBService.createCourse(newCourse);
-        return {
-          ...createdCourse,
-          id: createdCourse._id.toString(),
-          startDate: new Date(createdCourse.startDate),
-          endDate: new Date(createdCourse.endDate),
-          createdAt: new Date(createdCourse.createdAt),
-          updatedAt: new Date(createdCourse.updatedAt)
-        };
+        await cacheService.set('courses', newCourse.id, newCourse);
+        return newCourse;
       } else {
         // Update existing course
-        const courseData = {
+        const updatedCourse = {
           ...course,
-          _id: course.id,
           updatedAt: now
         };
-        delete courseData.id; // Remove id as MongoDB uses _id
         
-        const updatedCourse = await mongoDBService.updateCourse(course.id, courseData);
-        if (!updatedCourse) {
-          throw ErrorHandler.handle({
-            code: 'NOT_FOUND',
-            message: `Course with ID ${course.id} not found`
-          });
-        }
-        
-        return {
-          ...updatedCourse,
-          id: updatedCourse._id.toString(),
-          startDate: new Date(updatedCourse.startDate),
-          endDate: new Date(updatedCourse.endDate),
-          createdAt: new Date(updatedCourse.createdAt),
-          updatedAt: new Date(updatedCourse.updatedAt)
-        };
+        await cacheService.set('courses', course.id, updatedCourse);
+        return updatedCourse;
       }
     } catch (error) {
       const appError = ErrorHandler.handle(error);
@@ -192,7 +137,8 @@ class DataService {
     await this.ensureInitialized();
     
     try {
-      return await mongoDBService.deleteCourse(id);
+      await cacheService.delete('courses', id);
+      return true;
     } catch (error) {
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError);
@@ -227,10 +173,9 @@ class DataService {
     await this.ensureInitialized();
     
     try {
-      const notes = await mongoDBService.getAllNotes();
-      return notes.map(note => ({
+      const notes = await cacheService.getAll<Note>('notes');
+       return notes.map(note => ({
         ...note,
-        id: note._id.toString(),
         createdAt: new Date(note.createdAt),
         updatedAt: new Date(note.updatedAt)
       }));
@@ -245,13 +190,8 @@ class DataService {
     await this.ensureInitialized();
     
     try {
-      const notes = await mongoDBService.getNotesByCourse(courseId);
-      return notes.map(note => ({
-        ...note,
-        id: note._id.toString(),
-        createdAt: new Date(note.createdAt),
-        updatedAt: new Date(note.updatedAt)
-      }));
+      const allNotes = await this.getNotes();
+      return allNotes.filter(note => note.courseId === courseId);
     } catch (error) {
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError);
@@ -267,42 +207,24 @@ class DataService {
     try {
       if (!note.id) {
         // Create new note
-        const newNote: any = {
+        const newNote: Note = {
           ...note,
+          id: this.generateId(),
           createdAt: now,
           updatedAt: now
         };
         
-        const createdNote = await mongoDBService.createNote(newNote);
-        return {
-          ...createdNote,
-          id: createdNote._id.toString(),
-          createdAt: new Date(createdNote.createdAt),
-          updatedAt: new Date(createdNote.updatedAt)
-        };
+        await cacheService.set('notes', newNote.id, newNote);
+        return newNote;
       } else {
         // Update existing note
-        const noteData = {
+        const updatedNote = {
           ...note,
-          _id: note.id,
           updatedAt: now
         };
-        delete noteData.id; // Remove id as MongoDB uses _id
         
-        const updatedNote = await mongoDBService.updateNote(note.id, noteData);
-        if (!updatedNote) {
-          throw ErrorHandler.handle({
-            code: 'NOT_FOUND',
-            message: `Note with ID ${note.id} not found`
-          });
-        }
-        
-        return {
-          ...updatedNote,
-          id: updatedNote._id.toString(),
-          createdAt: new Date(updatedNote.createdAt),
-          updatedAt: new Date(updatedNote.updatedAt)
-        };
+        await cacheService.set('notes', note.id, updatedNote);
+        return updatedNote;
       }
     } catch (error) {
       const appError = ErrorHandler.handle(error);
@@ -315,7 +237,8 @@ class DataService {
     await this.ensureInitialized();
     
     try {
-      return await mongoDBService.deleteNote(id);
+      await cacheService.delete('notes', id);
+      return true;
     } catch (error) {
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError);
@@ -334,13 +257,18 @@ class DataService {
     
     if (courses.length === 0) {
       const sampleCourse = {
+        id: this.generateId(),
         name: "Introduction to Web Development",
         code: "WEB101",
         description: "Learn the fundamentals of web development including HTML, CSS, and JavaScript.",
         category: "programming",
         difficulty: "beginner",
+        progress: 0,
+        studentsEnrolled: 0,
         startDate: new Date(),
         endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
+        createdAt: new Date(),
+        updatedAt: new Date()
       } as Course;
       
       await this.saveCourse(sampleCourse);
@@ -350,9 +278,12 @@ class DataService {
     
     if (notes.length === 0) {
       const sampleNote = {
+        id: this.generateId(),
         title: "Getting Started with Learning",
         content: "Welcome to Learnware Grove! Start by creating courses and exploring AI-generated content.",
-        tags: ["welcome", "tutorial"]
+        tags: ["welcome", "tutorial"],
+        createdAt: new Date(),
+        updatedAt: new Date()
       } as Note;
       
       await this.saveNote(sampleNote);
@@ -360,4 +291,4 @@ class DataService {
   }
 }
 
-export const dataService = new DataService(); 
+export const dataService = new DataService();

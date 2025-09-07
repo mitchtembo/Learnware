@@ -1,12 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ErrorHandler } from "@/utils/errorHandler";
 import { CacheService } from "./CacheService";
-import { mongoDBService } from "./MongoDBService";
 
 class GeminiService {
   private genAI: GoogleGenerativeAI;
   private model: any;
-  private readonly MODEL_NAME = "gemini-2.0-flash";
+  private readonly MODEL_NAME = "gemini-1.5-flash";
   private readonly MAX_TOKENS = 8192;
   private initialized: boolean = false;
   private cache: CacheService;
@@ -14,12 +13,12 @@ class GeminiService {
 
   constructor() {
     this.cache = CacheService.getInstance();
-    this.initializeFromDB();
+    this.initializeFromStorage();
   }
 
-  private async initializeFromDB(): Promise<void> {
+  private async initializeFromStorage(): Promise<void> {
     try {
-      const apiKey = await mongoDBService.getSetting(this.API_KEY_SETTING);
+      const apiKey = this.getApiKeyFromStorage();
       
       if (apiKey) {
         this.initialize(apiKey);
@@ -27,17 +26,17 @@ class GeminiService {
         const envApiKey = import.meta.env.VITE_GEMINI_API_KEY;
         if (envApiKey) {
           this.initialize(envApiKey);
-          // Save the environment key to DB for future use
+          // Save the environment key to storage for future use
           await this.saveApiKey(envApiKey);
         } else {
-          console.warn("Gemini API key not found in database or environment variables");
+          console.warn("Gemini API key not found in local storage or environment variables");
         }
       }
     } catch (error) {
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError);
       
-      // Fall back to environment variable if DB fails
+      // Fall back to environment variable if storage fails
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (apiKey) {
         this.initialize(apiKey);
@@ -79,9 +78,9 @@ class GeminiService {
     }
   }
 
-  public async getApiKey(): Promise<string | null> {
+  private getApiKeyFromStorage(): string | null {
     try {
-      return await mongoDBService.getSetting(this.API_KEY_SETTING);
+      return localStorage.getItem(this.API_KEY_SETTING);
     } catch (error) {
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError);
@@ -89,9 +88,13 @@ class GeminiService {
     }
   }
 
+  public async getApiKey(): Promise<string | null> {
+    return this.getApiKeyFromStorage();
+  }
+
   public async saveApiKey(apiKey: string): Promise<boolean> {
     try {
-      await mongoDBService.setSetting(this.API_KEY_SETTING, apiKey);
+      localStorage.setItem(this.API_KEY_SETTING, apiKey);
       this.initialize(apiKey);
       return true;
     } catch (error) {
@@ -292,4 +295,4 @@ class GeminiService {
   }
 }
 
-export const geminiService = new GeminiService(); 
+export const geminiService = new GeminiService();

@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { geminiService } from '@/services/GeminiService';
-import { mongoDBService } from '@/services/MongoDBService';
 import { useToast } from '@/components/ui/use-toast';
 import { ErrorHandler } from '@/utils/errorHandler';
 
 export function useApiKey() {
   const [isValid, setIsValid] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [apiKey, setApiKey] = useState<string>("");
   const { toast } = useToast();
 
@@ -14,17 +13,11 @@ export function useApiKey() {
     try {
       setIsLoading(true);
       
-      // Check if we have an API key in the database
       const storedApiKey = await geminiService.getApiKey();
       
-      if (!storedApiKey) {
+      if (!storedApiKey || !geminiService.isInitialized()) {
         setIsValid(false);
-        return;
-      }
-      
-      // Check if the Gemini service is initialized
-      if (!geminiService.isInitialized()) {
-        setIsValid(false);
+        localStorage.setItem('apiKeyValid', 'false');
         return;
       }
       
@@ -32,17 +25,9 @@ export function useApiKey() {
       const response = await geminiService.getResearchAssistance('test connection');
       const valid = !response.error;
       setIsValid(valid);
+      localStorage.setItem('apiKeyValid', JSON.stringify(valid));
       
-      // Save the validation status to MongoDB
-      await mongoDBService.setSetting('apiKeyValid', valid);
-      
-      if (valid) {
-        toast({
-          title: "API Key Valid",
-          description: "Your Gemini API key is working correctly!",
-          duration: 3000,
-        });
-      } else {
+      if (!valid) {
         toast({
           title: "API Key Issue",
           description: "There's an issue with your Gemini API key. Please verify it's correct.",
@@ -54,7 +39,7 @@ export function useApiKey() {
       const appError = ErrorHandler.handle(error);
       ErrorHandler.logError(appError);
       setIsValid(false);
-      
+      localStorage.setItem('apiKeyValid', 'false');
       toast({
         title: "API Key Error",
         description: "Failed to validate the Gemini API key.",
@@ -79,26 +64,23 @@ export function useApiKey() {
     try {
       setIsLoading(true);
       
-      // Save the API key to MongoDB
       const saved = await geminiService.saveApiKey(key.trim());
       
       if (!saved) {
-        throw new Error("Failed to save API key to database");
+        throw new Error("Failed to save API key");
       }
       
-      // Record the timestamp of when the key was saved
-      await mongoDBService.setSetting('apiKeyTimestamp', Date.now());
-      
-      // Clear the input field
       setApiKey("");
-      
-      // Verify the key
       await checkApiKey();
       
-      toast({
-        title: "Success",
-        description: "API key saved successfully",
-      });
+      // Re-check validity after saving
+      const valid = await geminiService.isInitialized();
+      if(valid){
+        toast({
+            title: "Success",
+            description: "API key saved and validated successfully",
+        });
+      }
       
       return true;
     } catch (error) {
@@ -117,34 +99,21 @@ export function useApiKey() {
     }
   }, [toast, checkApiKey]);
 
-  // Initialize on component mount
   useEffect(() => {
     const init = async () => {
-      try {
-        // Check if MongoDB is connected
-        await mongoDBService.ensureConnected();
-        
-        // First check if the Gemini service is already initialized
-        if (geminiService.isInitialized()) {
-          setIsValid(true);
-          return;
-        }
-        
-        // Check if we have a valid key status saved
-        const keyValid = await mongoDBService.getSetting('apiKeyValid');
-        
-        if (keyValid) {
-          setIsValid(true);
-        } else {
-          // If not valid or not set, check the current key
-          checkApiKey();
-        }
-      } catch (error) {
-        // If MongoDB is not connected yet, try again later
-        const appError = ErrorHandler.handle(error);
-        ErrorHandler.logError(appError);
-        setTimeout(init, 1000);
+      setIsLoading(true);
+      
+      // The GeminiService constructor already tries to initialize from storage.
+      // We just need to check the result.
+      const initialized = geminiService.isInitialized();
+      setIsValid(initialized);
+      
+      // If it's initialized, we can do a background check to ensure it's still valid
+      if (initialized) {
+        await checkApiKey();
       }
+      
+      setIsLoading(false);
     };
     
     init();
@@ -158,4 +127,4 @@ export function useApiKey() {
     checkApiKey,
     saveApiKey
   };
-} 
+}
