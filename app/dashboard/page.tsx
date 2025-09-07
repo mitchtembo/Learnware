@@ -27,15 +27,26 @@ import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/AuthContext"
 
+async function getDashboardStats() {
+  const courses = await apiService.getUserCourses();
+
+  return {
+    totalCourses: courses.length,
+    completed: courses.filter((c: any) => c.progress === 100).length,
+    studyMaterials: courses.reduce((sum: number, c: any) => sum + (c.study_materials?.length || 0), 0),
+    quizzes: courses.reduce((sum: number, c: any) => sum + (c.quizzes?.length || 0), 0),
+    courses: courses,
+  };
+}
+
 export default function DashboardPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState({
     totalCourses: 0,
-    completedCourses: 0,
-    totalMaterials: 0,
-    totalQuizzes: 0,
-    averageProgress: 0,
+    completed: 0,
+    studyMaterials: 0,
+    quizzes: 0,
   })
   const router = useRouter()
   const { toast } = useToast()
@@ -46,28 +57,16 @@ export default function DashboardPage() {
       if (authLoading) return // Wait for auth to load
 
       try {
-        setIsLoading(true)
-        await apiService.initialize()
-
+        setIsLoading(true);
         if (user) {
-          const fetchedCourses = await apiService.getCourses()
-          setCourses(fetchedCourses)
-
-          const completed = fetchedCourses.filter((c) => c.progress === 100).length
-          const totalMaterials = fetchedCourses.reduce((acc, course) => acc + (course.studyMaterials?.length || 0), 0)
-          const totalQuizzes = fetchedCourses.reduce((acc, course) => acc + (course.quizzes?.length || 0), 0)
-          const avgProgress =
-            fetchedCourses.length > 0
-              ? fetchedCourses.reduce((acc, c) => acc + c.progress, 0) / fetchedCourses.length
-              : 0
-
+          const dashboardStats = await getDashboardStats();
           setStats({
-            totalCourses: fetchedCourses.length,
-            completedCourses: completed,
-            totalMaterials,
-            totalQuizzes,
-            averageProgress: Math.round(avgProgress),
-          })
+            totalCourses: dashboardStats.totalCourses,
+            completed: dashboardStats.completed,
+            studyMaterials: dashboardStats.studyMaterials,
+            quizzes: dashboardStats.quizzes,
+          });
+          setCourses(dashboardStats.courses);
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
@@ -84,7 +83,7 @@ export default function DashboardPage() {
     fetchData()
   }, [toast, user, authLoading])
 
-  const recentCourses = [...courses].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 3)
+  const recentCourses = [...courses].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 3)
 
   return (
     <MainLayout>
@@ -131,7 +130,7 @@ export default function DashboardPage() {
                   <Check className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{stats.completedCourses}</div>
+                  <div className="text-2xl font-bold">{stats.completed}</div>
                   <div className="text-sm text-muted-foreground">Completed</div>
                 </div>
               </Card>
@@ -141,7 +140,7 @@ export default function DashboardPage() {
                   <ScrollText className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{stats.totalMaterials}</div>
+                  <div className="text-2xl font-bold">{stats.studyMaterials}</div>
                   <div className="text-sm text-muted-foreground">Study Materials</div>
                 </div>
               </Card>
@@ -151,7 +150,7 @@ export default function DashboardPage() {
                   <Brain className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{stats.totalQuizzes}</div>
+                  <div className="text-2xl font-bold">{stats.quizzes}</div>
                   <div className="text-sm text-muted-foreground">Quizzes</div>
                 </div>
               </Card>

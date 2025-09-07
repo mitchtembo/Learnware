@@ -1,36 +1,129 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { ApiService } from "./ApiService";
+import { createClient } from "@/lib/supabase/client";
 import { Course } from "./DataService";
-import { from } from 'rxjs';
-import { map } from 'rxjs/operators';
 
-export class SupabaseApiService implements ApiService {
-    private supabase: SupabaseClient;
+const supabase = createClient();
 
-    constructor() {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        this.supabase = createClient(supabaseUrl, supabaseKey);
+export const supabaseApiService = {
+  async createCourse(courseData: any) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const { data, error } = await supabase
+      .from("courses")
+      .insert([{ ...courseData, user_id: user.id }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async getUserCourses() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      // Return empty array if not authenticated, as this is a read operation
+      return [];
     }
 
-    async getCourses(): Promise<Course[]> {
-        const { data, error } = await this.supabase
-            .from('courses')
-            .select('*');
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data as Course[];
-    }
+    const { data, error } = await supabase
+      .from("courses")
+      .select("*")
+      .eq("user_id", user.id);
 
-    async createCourse(course: Omit<Course, 'id' | 'created_at' | 'updated_at' | 'user_id'>): Promise<Course> {
-        const { data, error } = await this.supabase
-            .from('courses')
-            .insert([course])
-            .single();
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data as Course;
-    }
-}
+    if (error) throw error;
+    return data;
+  },
+
+  async getCourseById(id: string) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const { data, error } = await supabase
+      .from("courses")
+      .select("*")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async updateCourse(id: string, updatedData: any) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const { data, error } = await supabase
+      .from("courses")
+      .update(updatedData)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteCourse(id: string): Promise<boolean> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const { error } = await supabase
+      .from("courses")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user.id);
+
+    if (error) throw error;
+    return true;
+  },
+
+  // This is a placeholder to satisfy the previous interface.
+  // The new `getUserCourses` should be used instead.
+  async getCourses(): Promise<Course[]> {
+    return this.getUserCourses();
+  },
+
+  // This is a placeholder, assuming no initialization is needed for the singleton.
+  async initialize(): Promise<void> {
+    return Promise.resolve();
+  },
+
+  // The adapter also calls notes methods, which are not in the prompt.
+  // I will add dummy methods for them to avoid breaking the adapter.
+  async getNotes(): Promise<any[]> {
+    console.warn("getNotes not implemented in SupabaseApiService");
+    return [];
+  },
+  async getNoteById(id: string): Promise<any | null> {
+    console.warn("getNoteById not implemented in SupabaseApiService");
+    return null;
+  },
+  async getNotesByCourse(courseId: string): Promise<any[]> {
+    console.warn("getNotesByCourse not implemented in SupabaseApiService");
+    return [];
+  },
+  async createNote(noteData: any): Promise<any> {
+    console.warn("createNote not implemented in SupabaseApiService");
+    return {};
+  },
+  async updateNote(id: string, noteData: any): Promise<any> {
+    console.warn("updateNote not implemented in SupabaseApiService");
+    return {};
+  },
+  async deleteNote(id: string): Promise<boolean> {
+    console.warn("deleteNote not implemented in SupabaseApiService");
+    return false;
+  }
+};
