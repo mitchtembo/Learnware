@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import MainLayout from '@/layouts/MainLayout';
 import { CourseForm } from '@/components/course/CourseForm';
 import { Course } from '@/services/DataService';
-import { apiService } from '@/services/ApiService';
+import { apiService } from '@/services/ApiServiceAdapter';
+import { geminiService } from '@/services/GeminiService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -25,12 +26,11 @@ const Courses = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Initialize API service and load courses
     const initializeData = async () => {
       try {
         setIsLoading(true);
-        await apiService.initialize();
-        const fetchedCourses = await apiService.getCourses();
+        // The adapter handles initialization if needed
+        const fetchedCourses = await apiService.getUserCourses();
         setCourses(fetchedCourses);
       } catch (error) {
         console.error('Error fetching courses:', error);
@@ -47,28 +47,38 @@ const Courses = () => {
     initializeData();
   }, [toast]);
 
-  // Check if the route is /courses/new and open the dialog
   useEffect(() => {
     if (pathname === '/courses/new') {
       setIsDialogOpen(true);
     }
   }, [pathname]);
 
-  const handleCreateCourse = async (courseData: Omit<Course, 'id' | 'progress' | 'studentsEnrolled' | 'createdAt' | 'updatedAt'>) => {
+  const handleCreateCourse = async (formData: { topic: string, description?: string }) => {
     try {
       setIsCreating(true);
-      const newCourse = await apiService.createCourse(courseData);
-      setCourses(prev => [...prev, newCourse]);
+
+      // 1. Generate with AI
+      const generatedContent = await geminiService.generateCourseContent(formData.topic, formData.description);
+
+      // 2. Store in Supabase
+      const course = await apiService.createCourse({
+        name: generatedContent.courseTitle,
+        description: generatedContent.courseDescription,
+        topic: formData.topic,
+        difficulty: "Beginner", // or from AI
+        content: generatedContent,  // save full JSON
+      });
+
+      setCourses(prev => [...prev, course]);
       setIsDialogOpen(false);
       
-      // Navigate to the courses page if we were on /courses/new
       if (pathname === '/courses/new') {
         router.push('/courses');
       }
       
       toast({
         title: 'Success',
-        description: 'Course created successfully',
+        description: 'Course created successfully with AI!',
       });
     } catch (error) {
       console.error('Error creating course:', error);
@@ -82,7 +92,6 @@ const Courses = () => {
     }
   };
 
-  // Handle dialog close to redirect if on /courses/new
   const handleDialogChange = (open: boolean) => {
     setIsDialogOpen(open);
     if (!open && pathname === '/courses/new') {
@@ -116,9 +125,8 @@ const Courses = () => {
   };
 
   const filteredCourses = courses.filter(course =>
-    course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.description.toLowerCase().includes(searchQuery.toLowerCase())
+    (course.name && course.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (course.description && course.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -135,9 +143,12 @@ const Courses = () => {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create New Course</DialogTitle>
+                <DialogTitle>Create New Course with AI</DialogTitle>
               </DialogHeader>
-              <CourseForm onSubmit={handleCreateCourse} isSubmitting={isCreating} />
+              <CourseForm
+                onSubmit={(values) => handleCreateCourse({ topic: values.name, description: values.description })}
+                isSubmitting={isCreating}
+              />
             </DialogContent>
           </Dialog>
         </div>
