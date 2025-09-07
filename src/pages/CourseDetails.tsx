@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useRouter } from "next/navigation"
 import MainLayout from "../layouts/MainLayout"
 import type { Course } from "../services/DataService"
 import { apiService } from "../services/ApiServiceAdapter"
@@ -74,13 +74,13 @@ const iconMap: Record<string, React.ComponentType<any>> = {
   languages: Languages,
 }
 
-const CourseDetails = () => {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+const CourseDetails = ({ courseId }: { courseId?: string }) => {
+  const router = useRouter()
   const { toast } = useToast()
   const { user, loading: authLoading } = useAuth()
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
   const [generatingContent, setGeneratingContent] = useState(false)
   const [generatingMaterial, setGeneratingMaterial] = useState(false)
@@ -88,22 +88,26 @@ const CourseDetails = () => {
   const [savingData, setSavingData] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
     const fetchCourse = async () => {
-      if (!id) return
+      if (!courseId || !mounted) return
 
       if (authLoading) return // Wait for auth to load
       if (!user) {
-        navigate("/auth/login")
+        router.push("/auth/login")
         return
       }
 
       try {
         setLoading(true)
-        const courseData = await apiService.getCourseById(id)
+        const courseData = await apiService.getCourseById(courseId)
         if (courseData) {
           setCourse(courseData)
         } else {
-          navigate("/courses")
+          router.push("/courses")
           toast({
             title: "Course not found",
             description: "The requested course could not be found.",
@@ -117,21 +121,21 @@ const CourseDetails = () => {
           description: "Failed to load course details.",
           variant: "destructive",
         })
-        navigate("/courses")
+        router.push("/courses")
       } finally {
         setLoading(false)
       }
     }
 
     fetchCourse()
-  }, [id, navigate, toast, user, authLoading])
+  }, [courseId, router, toast, user, authLoading, mounted])
 
   const updateCourseData = async (updatedData: Partial<Course>) => {
-    if (!course || !id) return
+    if (!course || !courseId) return
 
     try {
       setSavingData(true)
-      const updatedCourse = await apiService.updateCourse(id, updatedData)
+      const updatedCourse = await apiService.updateCourse(courseId, updatedData)
       setCourse(updatedCourse)
       return updatedCourse
     } catch (error) {
@@ -573,6 +577,18 @@ const CourseDetails = () => {
     )
   }
 
+  if (!mounted) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </MainLayout>
+    )
+  }
+
   if (authLoading) {
     return (
       <MainLayout>
@@ -604,7 +620,7 @@ const CourseDetails = () => {
   return (
     <MainLayout>
       <div className="container mx-auto py-8">
-        <Button variant="ghost" className="mb-6" onClick={() => navigate("/courses")}>
+        <Button variant="ghost" className="mb-6" onClick={() => router.push("/courses")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Courses
         </Button>
@@ -647,7 +663,8 @@ const CourseDetails = () => {
                 <div>
                   <p className="text-sm font-medium">Duration</p>
                   <p className="text-sm text-muted-foreground">
-                    {course.startDate.toLocaleDateString()} - {course.endDate.toLocaleDateString()}
+                    {course.startDate ? new Date(course.startDate).toLocaleDateString() : "N/A"} -{" "}
+                    {course.endDate ? new Date(course.endDate).toLocaleDateString() : "N/A"}
                   </p>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter, usePathname } from "next/navigation"
 import MainLayout from "../layouts/MainLayout"
 import { CourseForm } from "../components/course/CourseForm"
 import type { Course } from "../services/DataService"
@@ -9,7 +10,6 @@ import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog"
 import { Search, Plus, Trash2, Loader2 } from "lucide-react"
-import { useNavigate, useLocation } from "react-router-dom"
 import { useToast } from "../components/ui/use-toast"
 import CourseCard from "../components/CourseCard"
 import { useAuth } from "../contexts/AuthContext"
@@ -21,16 +21,21 @@ const Courses = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
-  const navigate = useNavigate()
-  const location = useLocation()
+  const [mounted, setMounted] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
   const { toast } = useToast()
   const { user, loading: authLoading } = useAuth()
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
     const initializeData = async () => {
-      if (authLoading) return // Wait for auth to load
+      if (authLoading || !mounted) return // Wait for auth and mounting
       if (!user) {
-        navigate("/auth/login")
+        router.push("/auth/login")
         return
       }
 
@@ -52,13 +57,13 @@ const Courses = () => {
     }
 
     initializeData()
-  }, [toast, user, authLoading, navigate])
+  }, [toast, user, authLoading, router, mounted])
 
   useEffect(() => {
-    if (location.pathname === "/courses/new") {
+    if (pathname === "/courses/new") {
       setIsDialogOpen(true)
     }
-  }, [location.pathname])
+  }, [pathname])
 
   const handleCreateCourse = async (
     courseData: Omit<Course, "id" | "progress" | "studentsEnrolled" | "createdAt" | "updatedAt">,
@@ -69,8 +74,8 @@ const Courses = () => {
       setCourses((prev) => [...prev, newCourse])
       setIsDialogOpen(false)
 
-      if (location.pathname === "/courses/new") {
-        navigate("/courses")
+      if (pathname === "/courses/new") {
+        router.push("/courses")
       }
 
       toast({
@@ -91,8 +96,8 @@ const Courses = () => {
 
   const handleDialogChange = (open: boolean) => {
     setIsDialogOpen(open)
-    if (!open && location.pathname === "/courses/new") {
-      navigate("/courses")
+    if (!open && pathname === "/courses/new") {
+      router.push("/courses")
     }
   }
 
@@ -127,6 +132,16 @@ const Courses = () => {
       course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       course.description.toLowerCase().includes(searchQuery.toLowerCase()),
   )
+
+  if (!mounted) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    )
+  }
 
   if (authLoading) {
     return (

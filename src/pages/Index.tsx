@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import MainLayout from "../layouts/MainLayout"
 import { apiService } from "../services/ApiServiceAdapter"
 import type { Course } from "../services/DataService"
 import { Button } from "../components/ui/button"
 import { Card } from "../components/ui/card"
-import { useNavigate } from "react-router-dom"
 import CourseCard from "../components/CourseCard"
 import {
   BookOpen,
@@ -30,6 +30,7 @@ import { useAuth } from "../contexts/AuthContext"
 const Index = () => {
   const [courses, setCourses] = useState<Course[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const [stats, setStats] = useState({
     totalCourses: 0,
     completedCourses: 0,
@@ -37,13 +38,17 @@ const Index = () => {
     totalQuizzes: 0,
     averageProgress: 0,
   })
-  const navigate = useNavigate()
+  const router = useRouter()
   const { toast } = useToast()
   const { user, loading: authLoading } = useAuth()
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
     const fetchData = async () => {
-      if (authLoading) return // Wait for auth to load
+      if (authLoading || !mounted) return // Wait for auth and mounting
 
       try {
         setIsLoading(true)
@@ -82,7 +87,7 @@ const Index = () => {
     }
 
     fetchData()
-  }, [toast, user, authLoading])
+  }, [toast, user, authLoading, mounted])
 
   const recentCourses = [...courses].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 3)
 
@@ -99,6 +104,16 @@ const Index = () => {
     }
   }
 
+  if (!mounted) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </MainLayout>
+    )
+  }
+
   if (!user && !authLoading) {
     return (
       <MainLayout>
@@ -110,10 +125,10 @@ const Index = () => {
             </div>
             <p className="text-xl text-muted-foreground mb-8">Study faster. Understand deeper.</p>
             <div className="flex gap-4 justify-center">
-              <Button size="lg" onClick={() => navigate("/auth/signup")}>
+              <Button size="lg" onClick={() => router.push("/auth/signup")}>
                 Get Started
               </Button>
-              <Button variant="outline" size="lg" onClick={() => navigate("/auth/login")}>
+              <Button variant="outline" size="lg" onClick={() => router.push("/auth/login")}>
                 Sign In
               </Button>
             </div>
@@ -135,11 +150,11 @@ const Index = () => {
             <p className="text-muted-foreground mt-1">Study faster. Understand deeper.</p>
           </div>
           <div className="flex gap-3">
-            <Button onClick={() => navigate("/courses/new")}>
+            <Button onClick={() => router.push("/courses/new")}>
               <PlusCircle className="h-4 w-4 mr-2" />
               New Course
             </Button>
-            <Button variant="outline" onClick={() => navigate("/notes/new")}>
+            <Button variant="outline" onClick={() => router.push("/notes/new")}>
               <PenLine className="h-4 w-4 mr-2" />
               New Note
             </Button>
@@ -202,7 +217,7 @@ const Index = () => {
                       <BookOpen className="h-5 w-5 text-primary" />
                       <h2 className="text-xl font-semibold">Recent Courses</h2>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => navigate("/courses")}>
+                    <Button variant="ghost" size="sm" onClick={() => router.push("/courses")}>
                       View All
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -218,7 +233,7 @@ const Index = () => {
                     <div className="text-center py-8 text-muted-foreground">
                       <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-20" />
                       <p>No courses found. Create your first course to get started!</p>
-                      <Button className="mt-4" onClick={() => navigate("/courses/new")}>
+                      <Button className="mt-4" onClick={() => router.push("/courses/new")}>
                         Create a Course
                       </Button>
                     </div>
@@ -305,7 +320,7 @@ const Index = () => {
                   </div>
 
                   <div className="mt-4">
-                    <Button className="w-full" onClick={() => navigate("/courses/new")}>
+                    <Button className="w-full" onClick={() => router.push("/courses/new")}>
                       <PlusCircle className="h-4 w-4 mr-2" />
                       Start Your First Course
                     </Button>
