@@ -3,7 +3,8 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { createClient } from "../../lib/supabase/client"
 import { Button } from "../../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
@@ -17,7 +18,7 @@ export default function SignUp() {
   const [displayName, setDisplayName] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const navigate = useNavigate()
+  const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,7 +44,7 @@ export default function SignUp() {
         },
       })
       if (error) throw error
-      navigate("/auth/signup-success")
+      router.push("/auth/signup-success")
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
@@ -112,7 +113,7 @@ export default function SignUp() {
             </form>
             <div className="mt-6 text-center text-sm">
               Already have an account?{" "}
-              <Link to="/auth/login" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/auth/login" className="font-medium text-blue-600 hover:text-blue-500">
                 Sign in
               </Link>
             </div>
