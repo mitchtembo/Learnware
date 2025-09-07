@@ -31,35 +31,35 @@ A modern learning and research platform built with React, TypeScript, and Vite, 
 ## Getting Started
 
 1. Clone the repository:
-   ```bash
+   \`\`\`bash
    git clone https://github.com/yourusername/learnware-grove.git
    cd learnware-grove
-   ```
+   \`\`\`
 
 2. Install dependencies:
-   ```bash
+   \`\`\`bash
    npm install
    # or
    bun install
-   ```
+   \`\`\`
 
 3. Create a `.env` file in the root directory and add your Gemini API key:
-   ```env
+   \`\`\`env
    VITE_GEMINI_API_KEY=your_api_key_here
-   ```
+   \`\`\`
 
 4. Start the development server:
-   ```bash
+   \`\`\`bash
    npm run dev
    # or
    bun dev
-   ```
+   \`\`\`
 
 5. Open your browser and navigate to `http://localhost:5173`
 
 ## Project Structure
 
-```
+\`\`\`
 src/
 ├── components/     # Reusable UI components
 ├── hooks/         # Custom React hooks
@@ -68,7 +68,7 @@ src/
 ├── pages/        # Main application pages
 ├── utils/        # Helper functions and services
 └── App.tsx       # Main application component
-```
+\`\`\`
 
 ## Available Scripts
 
