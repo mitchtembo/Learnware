@@ -71,4 +71,4 @@ class WebContentService {
   }
 }
 
-export const webContentService = new WebContentService(); 
+export const webContentService = new WebContentService();

@@ -20,4 +20,4 @@ export function Providers({ children }: ProvidersProps) {
       </QueryClientProvider>
     </React.StrictMode>
   )
-} 
+}
