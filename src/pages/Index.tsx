@@ -108,9 +108,12 @@ const Index = () => {
       <div className="space-y-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Learnware Grove</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold">Learnware Grove</h1>
+              <Badge variant="outline">Beta</Badge>
+            </div>
             <p className="text-muted-foreground mt-1">
-              Ready-to-use AI-powered learning platform with Gemini integration
+              Study faster. Understand deeper.
             </p>
           </div>
           <div className="flex gap-3">
