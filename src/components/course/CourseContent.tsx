@@ -174,4 +174,4 @@ export function CourseContent({ courseName, description, difficulty }: CourseCon
       </div>
     </div>
   );
-} 
+}

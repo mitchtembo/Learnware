@@ -124,4 +124,4 @@ export function WebContent({ initialTopic }: WebContentProps) {
       )}
     </div>
   );
-} 
+}

@@ -135,4 +135,4 @@ const CourseCard = ({ course, compact = false }: CourseCardProps) => {
   );
 };
 
-export default CourseCard; 
+export default CourseCard;

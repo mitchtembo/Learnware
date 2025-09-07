@@ -175,4 +175,4 @@ export function NoteEditor({ onSave, initialData, courses }: NoteEditorProps) {
       </CardFooter>
     </Card>
   );
-} 
+}

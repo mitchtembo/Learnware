@@ -327,4 +327,4 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
       </form>
     </Form>
   );
-} 
+}
