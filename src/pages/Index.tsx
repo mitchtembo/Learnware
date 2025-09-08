@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
-import MainLayout from '../layouts/MainLayout';
-import { apiService } from '../services/ApiService';
-import { Course } from '../services/DataService';
-import { Button } from '../components/ui/button';
-import { Card } from '../components/ui/card';
-import { Progress } from '../components/ui/progress';
-import { useNavigate, Link } from 'react-router-dom';
-import CourseCard from '../components/CourseCard';
-import { 
-  BookOpen, 
-  FileText, 
-  Brain, 
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import MainLayout from "../layouts/MainLayout"
+import { apiService } from "../services/ApiServiceAdapter"
+import type { Course } from "../services/DataService"
+import { Button } from "../components/ui/button"
+import { Card } from "../components/ui/card"
+import CourseCard from "../components/CourseCard"
+import {
+  BookOpen,
+  Brain,
   PlusCircle,
   ArrowRight,
   GraduationCap,
@@ -18,90 +18,125 @@ import {
   Book,
   PenLine,
   Search,
-  Sparkles,
-  Layers,
-  Clock,
-  Users,
   Award,
-  BarChart,
   Zap,
   Check,
-  Lock,
-  AlarmClock,
-  ScrollText
-} from 'lucide-react';
-import { useToast } from '../components/ui/use-toast';
-import { Badge } from '../components/ui/badge';
+  ScrollText,
+} from "lucide-react"
+import { useToast } from "../components/ui/use-toast"
+import { Badge } from "../components/ui/badge"
+import { useAuth } from "../contexts/AuthContext"
 
 const Index = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [courses, setCourses] = useState<Course[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const [stats, setStats] = useState({
     totalCourses: 0,
     completedCourses: 0,
     totalMaterials: 0,
     totalQuizzes: 0,
-    averageProgress: 0
-  });
-  const navigate = useNavigate();
-  const { toast } = useToast();
+    averageProgress: 0,
+  })
+  const router = useRouter()
+  const { toast } = useToast()
+  const { user, loading: authLoading } = useAuth()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const fetchData = async () => {
+      if (authLoading || !mounted) return // Wait for auth and mounting
+
       try {
-        setIsLoading(true);
-        await apiService.initialize();
-        const fetchedCourses = await apiService.getCourses();
-        setCourses(fetchedCourses);
+        setIsLoading(true)
+        await apiService.initialize()
 
-        // Calculate stats
-        const completed = fetchedCourses.filter(c => c.progress === 100).length;
-        const totalMaterials = fetchedCourses.reduce((acc, course) => 
-          acc + (course.studyMaterials?.length || 0), 0);
-        const totalQuizzes = fetchedCourses.reduce((acc, course) => 
-          acc + (course.quizzes?.length || 0), 0);
-        const avgProgress = fetchedCourses.length > 0
-          ? fetchedCourses.reduce((acc, c) => acc + c.progress, 0) / fetchedCourses.length
-          : 0;
+        if (user) {
+          const fetchedCourses = await apiService.getCourses()
+          setCourses(fetchedCourses)
 
-        setStats({
-          totalCourses: fetchedCourses.length,
-          completedCourses: completed,
-          totalMaterials,
-          totalQuizzes,
-          averageProgress: Math.round(avgProgress)
-        });
+          const completed = fetchedCourses.filter((c) => c.progress === 100).length
+          const totalMaterials = fetchedCourses.reduce((acc, course) => acc + (course.studyMaterials?.length || 0), 0)
+          const totalQuizzes = fetchedCourses.reduce((acc, course) => acc + (course.quizzes?.length || 0), 0)
+          const avgProgress =
+            fetchedCourses.length > 0
+              ? fetchedCourses.reduce((acc, c) => acc + c.progress, 0) / fetchedCourses.length
+              : 0
+
+          setStats({
+            totalCourses: fetchedCourses.length,
+            completedCourses: completed,
+            totalMaterials,
+            totalQuizzes,
+            averageProgress: Math.round(avgProgress),
+          })
+        }
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        console.error("Error fetching dashboard data:", error)
         toast({
-          title: 'Error',
-          description: 'Failed to load dashboard data.',
-          variant: 'destructive',
-        });
+          title: "Error",
+          description: "Failed to load dashboard data.",
+          variant: "destructive",
+        })
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
-    };
+    }
 
-    fetchData();
-  }, [toast]);
+    fetchData()
+  }, [toast, user, authLoading, mounted])
 
-  const recentCourses = [...courses]
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, 3);
+  const recentCourses = [...courses].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 3)
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
-      case 'beginner':
-        return 'bg-green-100 text-green-800';
-      case 'intermediate':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'advanced':
-        return 'bg-red-100 text-red-800';
+      case "beginner":
+        return "bg-green-100 text-green-800"
+      case "intermediate":
+        return "bg-yellow-100 text-yellow-800"
+      case "advanced":
+        return "bg-red-100 text-red-800"
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800"
     }
-  };
+  }
+
+  if (!mounted) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  if (!user && !authLoading) {
+    return (
+      <MainLayout>
+        <div className="space-y-8">
+          <div className="text-center py-12">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <h1 className="text-4xl font-bold">Learnware Grove</h1>
+              <Badge variant="outline">Beta</Badge>
+            </div>
+            <p className="text-xl text-muted-foreground mb-8">Study faster. Understand deeper.</p>
+            <div className="flex gap-4 justify-center">
+              <Button size="lg" onClick={() => router.push("/auth/signup")}>
+                Get Started
+              </Button>
+              <Button variant="outline" size="lg" onClick={() => router.push("/auth/login")}>
+                Sign In
+              </Button>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    )
+  }
 
   return (
     <MainLayout>
@@ -112,29 +147,26 @@ const Index = () => {
               <h1 className="text-3xl font-bold">Learnware Grove</h1>
               <Badge variant="outline">Beta</Badge>
             </div>
-            <p className="text-muted-foreground mt-1">
-              Study faster. Understand deeper.
-            </p>
+            <p className="text-muted-foreground mt-1">Study faster. Understand deeper.</p>
           </div>
           <div className="flex gap-3">
-            <Button onClick={() => navigate('/courses/new')}>
+            <Button onClick={() => router.push("/courses/new")}>
               <PlusCircle className="h-4 w-4 mr-2" />
               New Course
             </Button>
-            <Button variant="outline" onClick={() => navigate('/notes/new')}>
+            <Button variant="outline" onClick={() => router.push("/notes/new")}>
               <PenLine className="h-4 w-4 mr-2" />
               New Note
             </Button>
           </div>
         </div>
 
-        {isLoading ? (
+        {isLoading || authLoading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         ) : (
           <>
-            {/* Stats Overview */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="p-4 flex items-center gap-3">
                 <div className="bg-primary/10 p-3 rounded-full">
@@ -145,7 +177,7 @@ const Index = () => {
                   <div className="text-sm text-muted-foreground">Total Courses</div>
                 </div>
               </Card>
-              
+
               <Card className="p-4 flex items-center gap-3">
                 <div className="bg-green-100 p-3 rounded-full">
                   <Check className="h-6 w-6 text-green-600" />
@@ -155,7 +187,7 @@ const Index = () => {
                   <div className="text-sm text-muted-foreground">Completed</div>
                 </div>
               </Card>
-              
+
               <Card className="p-4 flex items-center gap-3">
                 <div className="bg-blue-100 p-3 rounded-full">
                   <ScrollText className="h-6 w-6 text-blue-600" />
@@ -165,7 +197,7 @@ const Index = () => {
                   <div className="text-sm text-muted-foreground">Study Materials</div>
                 </div>
               </Card>
-              
+
               <Card className="p-4 flex items-center gap-3">
                 <div className="bg-purple-100 p-3 rounded-full">
                   <Brain className="h-6 w-6 text-purple-600" />
@@ -178,16 +210,14 @@ const Index = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Main Content - 2/3 width */}
               <div className="lg:col-span-2 space-y-6">
-                {/* Recent Courses */}
                 <Card className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <BookOpen className="h-5 w-5 text-primary" />
                       <h2 className="text-xl font-semibold">Recent Courses</h2>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => navigate('/courses')}>
+                    <Button variant="ghost" size="sm" onClick={() => router.push("/courses")}>
                       View All
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -195,7 +225,7 @@ const Index = () => {
 
                   {recentCourses.length > 0 ? (
                     <div className="grid grid-cols-1 gap-4">
-                      {recentCourses.map(course => (
+                      {recentCourses.map((course) => (
                         <CourseCard key={course.id} course={course} compact={true} />
                       ))}
                     </div>
@@ -203,17 +233,13 @@ const Index = () => {
                     <div className="text-center py-8 text-muted-foreground">
                       <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-20" />
                       <p>No courses found. Create your first course to get started!</p>
-                      <Button 
-                        className="mt-4" 
-                        onClick={() => navigate('/courses/new')}
-                      >
+                      <Button className="mt-4" onClick={() => router.push("/courses/new")}>
                         Create a Course
                       </Button>
                     </div>
                   )}
                 </Card>
 
-                {/* Highlighted Features */}
                 <Card className="p-6">
                   <div className="flex items-center gap-2 mb-6">
                     <Zap className="h-5 w-5 text-primary" />
@@ -256,15 +282,13 @@ const Index = () => {
                 </Card>
               </div>
 
-              {/* Sidebar - 1/3 width */}
               <div className="space-y-6">
-                {/* Quick Start Guide */}
                 <Card className="p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <GraduationCap className="h-5 w-5 text-primary" />
                     <h2 className="text-xl font-semibold">Getting Started</h2>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div className="flex gap-3 items-start">
                       <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
@@ -272,21 +296,21 @@ const Index = () => {
                       </div>
                       <p className="text-sm">Create a new course to begin your learning journey</p>
                     </div>
-                    
+
                     <div className="flex gap-3 items-start">
                       <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
                         <span className="text-xs font-medium">2</span>
                       </div>
                       <p className="text-sm">Generate AI-powered content for comprehensive learning</p>
                     </div>
-                    
+
                     <div className="flex gap-3 items-start">
                       <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
                         <span className="text-xs font-medium">3</span>
                       </div>
                       <p className="text-sm">Create study materials and quizzes to test your knowledge</p>
                     </div>
-                    
+
                     <div className="flex gap-3 items-start">
                       <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
                         <span className="text-xs font-medium">4</span>
@@ -296,7 +320,7 @@ const Index = () => {
                   </div>
 
                   <div className="mt-4">
-                    <Button className="w-full" onClick={() => navigate('/courses/new')}>
+                    <Button className="w-full" onClick={() => router.push("/courses/new")}>
                       <PlusCircle className="h-4 w-4 mr-2" />
                       Start Your First Course
                     </Button>
@@ -308,7 +332,7 @@ const Index = () => {
         )}
       </div>
     </MainLayout>
-  );
-};
+  )
+}
 
-export default Index;
+export default Index

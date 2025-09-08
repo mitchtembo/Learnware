@@ -78,4 +78,4 @@ export function getCourseBackground(topic: string = ""): CourseBackground {
   
   // Return default if no match found
   return backgroundMap["default"];
-} 
+}

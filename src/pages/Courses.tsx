@@ -1,123 +1,157 @@
-import { useState, useEffect } from 'react';
-import MainLayout from '../layouts/MainLayout';
-import { CourseForm } from '../components/course/CourseForm';
-import { Course } from '../services/DataService';
-import { apiService } from '../services/ApiService';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { Search, Plus, Trash2, Loader2 } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useToast } from '../components/ui/use-toast';
-import CourseCard from '../components/CourseCard';
+"use client"
+
+import { useState, useEffect } from "react"
+import { useRouter, usePathname } from "next/navigation"
+import MainLayout from "../layouts/MainLayout"
+import CourseForm from "../components/course/CourseForm"
+import type { Course } from "../services/DataService"
+import { apiService } from "../services/ApiServiceAdapter"
+import { Button } from "../components/ui/button"
+import { Input } from "../components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog"
+import { Search, Plus, Trash2, Loader2 } from "lucide-react"
+import { useToast } from "../components/ui/use-toast"
+import CourseCard from "../components/CourseCard"
+import { useAuth } from "../contexts/AuthContext"
 
 const Courses = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { toast } = useToast();
+  const [courses, setCourses] = useState<Course[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isCreating, setIsCreating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
+  const { toast } = useToast()
+  const { user, loading: authLoading } = useAuth()
 
   useEffect(() => {
-    // Initialize API service and load courses
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
     const initializeData = async () => {
+      if (authLoading || !mounted) return // Wait for auth and mounting
+      if (!user) {
+        router.push("/auth/login")
+        return
+      }
+
       try {
-        setIsLoading(true);
-        await apiService.initialize();
-        const fetchedCourses = await apiService.getCourses();
-        setCourses(fetchedCourses);
+        setIsLoading(true)
+        await apiService.initialize()
+        const fetchedCourses = await apiService.getCourses()
+        setCourses(fetchedCourses)
       } catch (error) {
-        console.error('Error fetching courses:', error);
+        console.error("Error fetching courses:", error)
         toast({
-          title: 'Error',
-          description: 'Failed to load courses. Please try again.',
-          variant: 'destructive',
-        });
+          title: "Error",
+          description: "Failed to load courses. Please try again.",
+          variant: "destructive",
+        })
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
-    };
+    }
 
-    initializeData();
-  }, [toast]);
+    initializeData()
+  }, [toast, user, authLoading, router, mounted])
 
-  // Check if the route is /courses/new and open the dialog
   useEffect(() => {
-    if (location.pathname === '/courses/new') {
-      setIsDialogOpen(true);
+    if (pathname === "/courses/new") {
+      setIsDialogOpen(true)
     }
-  }, [location.pathname]);
+  }, [pathname])
 
-  const handleCreateCourse = async (courseData: Omit<Course, 'id' | 'progress' | 'studentsEnrolled' | 'createdAt' | 'updatedAt'>) => {
+  const handleCreateCourse = async (
+    courseData: Omit<Course, "id" | "progress" | "studentsEnrolled" | "createdAt" | "updatedAt">,
+  ) => {
     try {
-      setIsCreating(true);
-      const newCourse = await apiService.createCourse(courseData);
-      setCourses(prev => [...prev, newCourse]);
-      setIsDialogOpen(false);
-      
-      // Navigate to the courses page if we were on /courses/new
-      if (location.pathname === '/courses/new') {
-        navigate('/courses');
-      }
-      
-      toast({
-        title: 'Success',
-        description: 'Course created successfully',
-      });
-    } catch (error) {
-      console.error('Error creating course:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create course. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsCreating(false);
-    }
-  };
+      setIsCreating(true)
+      const newCourse = await apiService.createCourse(courseData)
+      setCourses((prev) => [...prev, newCourse])
+      setIsDialogOpen(false)
 
-  // Handle dialog close to redirect if on /courses/new
-  const handleDialogChange = (open: boolean) => {
-    setIsDialogOpen(open);
-    if (!open && location.pathname === '/courses/new') {
-      navigate('/courses');
+      if (pathname === "/courses/new") {
+        router.push("/courses")
+      }
+
+      toast({
+        title: "Success",
+        description: "Course created successfully",
+      })
+    } catch (error) {
+      console.error("Error creating course:", error)
+      toast({
+        title: "Error",
+        description: "Failed to create course. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreating(false)
     }
-  };
+  }
+
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open)
+    if (!open && pathname === "/courses/new") {
+      router.push("/courses")
+    }
+  }
 
   const handleDeleteCourse = async (courseId: string) => {
-    if (window.confirm('Are you sure you want to delete this course?')) {
+    if (window.confirm("Are you sure you want to delete this course?")) {
       try {
-        setIsDeleting(courseId);
-        const success = await apiService.deleteCourse(courseId);
+        setIsDeleting(courseId)
+        const success = await apiService.deleteCourse(courseId)
         if (success) {
-          setCourses(prev => prev.filter(course => course.id !== courseId));
+          setCourses((prev) => prev.filter((course) => course.id !== courseId))
           toast({
-            title: 'Success',
-            description: 'Course deleted successfully',
-          });
+            title: "Success",
+            description: "Course deleted successfully",
+          })
         }
       } catch (error) {
-        console.error('Error deleting course:', error);
+        console.error("Error deleting course:", error)
         toast({
-          title: 'Error',
-          description: 'Failed to delete course. Please try again.',
-          variant: 'destructive',
-        });
+          title: "Error",
+          description: "Failed to delete course. Please try again.",
+          variant: "destructive",
+        })
       } finally {
-        setIsDeleting(null);
+        setIsDeleting(null)
       }
     }
-  };
+  }
 
-  const filteredCourses = courses.filter(course =>
-    course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCourses = courses.filter(
+    (course) =>
+      course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchQuery.toLowerCase()),
+  )
+
+  if (!mounted) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    )
+  }
+
+  if (authLoading) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    )
+  }
 
   return (
     <MainLayout>
@@ -165,8 +199,8 @@ const Courses = () => {
                   size="sm"
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteCourse(course.id);
+                    e.stopPropagation()
+                    handleDeleteCourse(course.id)
                   }}
                   disabled={isDeleting === course.id}
                 >
@@ -188,7 +222,7 @@ const Courses = () => {
         )}
       </div>
     </MainLayout>
-  );
-};
+  )
+}
 
-export default Courses;
+export default Courses

@@ -1,330 +1,205 @@
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+
+import React from "react";
+import { useFieldArray, UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon, Loader2, Sparkles } from "lucide-react";
-import { geminiService } from "../../services/GeminiService";
-import { useToast } from "@/components/ui/use-toast";
-
-const formSchema = z.object({
-  name: z.string().min(2, "Course name must be at least 2 characters"),
-  code: z.string().min(2, "Course code must be at least 2 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  startDate: z.date(),
-  endDate: z.date(),
-  category: z.string(),
-  difficulty: z.string(),
-});
-
-type CourseFormValues = z.infer<typeof formSchema>;
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { PlusCircle, Trash2, Wand2 } from "lucide-react";
 
 interface CourseFormProps {
-  onSubmit: (data: CourseFormValues) => void;
-  initialData?: Partial<CourseFormValues>;
-  isSubmitting?: boolean;
+  form: UseFormReturn<any>;
+  onSubmit: (data: any) => void;
+  onGenerate: () => void;
+  isLoading: boolean;
+  isGenerating: boolean;
 }
 
-export function CourseForm({ onSubmit, initialData, isSubmitting = false }: CourseFormProps) {
-  const [startDate, setStartDate] = useState<Date | undefined>(
-    initialData?.startDate
-  );
-  const [endDate, setEndDate] = useState<Date | undefined>(initialData?.endDate);
-  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
-  const { toast } = useToast();
-
-  const form = useForm<CourseFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: initialData?.name || "",
-      code: initialData?.code || "",
-      description: initialData?.description || "",
-      category: initialData?.category || "",
-      difficulty: initialData?.difficulty || "",
-      startDate: startDate || new Date(),
-      endDate: endDate || new Date(),
-    },
+const CourseForm: React.FC<CourseFormProps> = ({ form, onSubmit, onGenerate, isLoading, isGenerating }) => {
+  
+  const { fields: objectives, append: appendObjective, remove: removeObjective } = useFieldArray({
+    control: form.control,
+    name: "learning_objectives",
   });
 
-  const generateDescription = async (courseName: string) => {
-    if (courseName.length < 3) return;
-    
-    try {
-      setIsGeneratingDescription(true);
-      const description = await geminiService.generateCourseDescription(courseName);
-      form.setValue('description', description, { shouldValidate: true });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate course description",
-        variant: "destructive",
-      });
-      console.error("Error generating description:", error);
-    } finally {
-      setIsGeneratingDescription(false);
-    }
-  };
+  const { fields: topics, append: appendTopic, remove: removeTopic } = useFieldArray({
+    control: form.control,
+    name: "key_topics",
+  });
+  
+  const { fields: prerequisites, append: appendPrerequisite, remove: removePrerequisite } = useFieldArray({
+    control: form.control,
+    name: "prerequisites",
+  });
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Course Name</FormLabel>
-              <FormControl>
-                <Input 
-                  placeholder="Introduction to Computer Science" 
-                  {...field} 
-                  onChange={(e) => {
-                    field.onChange(e);
-                    // Only auto-generate if description is empty
-                    if (!form.getValues('description')) {
-                      const debouncedGenerate = setTimeout(() => {
-                        generateDescription(e.target.value);
-                      }, 800);
-                      return () => clearTimeout(debouncedGenerate);
-                    }
-                  }}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="code"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Course Code</FormLabel>
-              <FormControl>
-                <Input placeholder="CS101" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex items-center justify-between">
-                <FormLabel>Description</FormLabel>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => generateDescription(form.getValues('name'))}
-                  disabled={isGeneratingDescription || !form.getValues('name')}
-                >
-                  {isGeneratingDescription ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-1" />
-                  )}
-                  Generate
-                </Button>
-              </div>
-              <FormControl>
-                <div className="relative">
-                  <Textarea
-                    placeholder="Enter course description..."
-                    {...field}
-                    disabled={isGeneratingDescription}
-                  />
-                  {isGeneratingDescription && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    </div>
-                  )}
+        <Card>
+          <CardHeader>
+            <CardTitle>Basic Information</CardTitle>
+            <CardDescription>Start by defining the course name, topic, and other essential details.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Course Name</FormLabel>
+                  <FormControl><Input placeholder="e.g., Introduction to React" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="topic"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Topic</FormLabel>
+                  <FormControl><Input placeholder="e.g., Web Development" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="difficulty"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Difficulty</FormLabel>
+                  <FormControl><Input placeholder="e.g., Beginner" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            </div>
+             <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormControl><Textarea placeholder="Briefly describe the course." {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                <div>
+                    <CardTitle>Course Content</CardTitle>
+                    <CardDescription>Fill this in manually or use AI to generate it based on the name and topic.</CardDescription>
                 </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-2 gap-4">
+                <Button type="button" onClick={onGenerate} disabled={isGenerating}>
+                    <Wand2 className="h-4 w-4 mr-2" />
+                    {isGenerating ? "Generating..." : "Generate Content with AI"}
+                </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
           <FormField
-            control={form.control}
-            name="startDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Start Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) =>
-                        date < new Date() || (endDate ? date > endDate : false)
-                      }
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              control={form.control}
+              name="overview"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Overview</FormLabel>
+                  <FormControl><Textarea placeholder="Provide a detailed overview of the course." {...field} rows={4} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="endDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>End Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full pl-3 text-left font-normal",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) =>
-                        date < (startDate || new Date())
-                      }
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <div>
+              <FormLabel>Learning Objectives</FormLabel>
+              {objectives.map((field, index) => (
+                <div key={field.id} className="flex items-center gap-2 mt-2">
+                  <FormField
+                    control={form.control}
+                    name={`learning_objectives.${index}.value`}
+                    render={({ field }) => (
+                      <FormItem className="flex-grow">
+                        <FormControl><Input placeholder="e.g., Understand component lifecycle" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeObjective(index)}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => appendObjective({ value: "" })}><PlusCircle className="h-4 w-4 mr-2" />Add Objective</Button>
+            </div>
+            
+            <div>
+              <FormLabel>Key Topics</FormLabel>
+              {topics.map((field, index) => (
+                <div key={field.id} className="flex flex-col gap-2 mt-2 p-3 border rounded">
+                   <div className="flex items-center justify-between">
+                    <p className="font-medium text-sm">Topic {index + 1}</p>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeTopic(index)}><Trash2 className="h-4 w-4" /></Button>
+                   </div>
+                  <FormField
+                    control={form.control}
+                    name={`key_topics.${index}.title`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Title</FormLabel>
+                        <FormControl><Input placeholder="e.g., State Management" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`key_topics.${index}.description`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Description</FormLabel>
+                        <FormControl><Textarea placeholder="e.g., Using hooks like useState and useReducer" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => appendTopic({ title: "", description: "" })}><PlusCircle className="h-4 w-4 mr-2" />Add Topic</Button>
+            </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Category</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="computer-science">
-                      Computer Science
-                    </SelectItem>
-                    <SelectItem value="mathematics">Mathematics</SelectItem>
-                    <SelectItem value="physics">Physics</SelectItem>
-                    <SelectItem value="chemistry">Chemistry</SelectItem>
-                    <SelectItem value="biology">Biology</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <div>
+              <FormLabel>Prerequisites</FormLabel>
+              {prerequisites.map((field, index) => (
+                <div key={field.id} className="flex items-center gap-2 mt-2">
+                  <FormField
+                    control={form.control}
+                    name={`prerequisites.${index}.value`}
+                    render={({ field }) => (
+                      <FormItem className="flex-grow">
+                        <FormControl><Input placeholder="e.g., Basic JavaScript knowledge" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removePrerequisite(index)}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => appendPrerequisite({ value: "" })}><PlusCircle className="h-4 w-4 mr-2" />Add Prerequisite</Button>
+            </div>
+          </CardContent>
+        </Card>
 
-          <FormField
-            control={form.control}
-            name="difficulty"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Difficulty</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select difficulty" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="advanced">Advanced</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {initialData ? "Updating Course..." : "Creating Course..."}
-            </>
-          ) : (
-            initialData ? "Update Course" : "Create Course"
-          )}
+        <Button type="submit" disabled={isLoading || isGenerating} className="w-full sm:w-auto">
+          {isLoading ? "Creating Course..." : "Create Course"}
         </Button>
       </form>
     </Form>
   );
-} 
+};
+
+export default CourseForm;

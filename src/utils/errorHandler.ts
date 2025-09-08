@@ -76,4 +76,4 @@ export class ErrorHandler {
     
     // Here you could add additional logging logic like sending to a logging service
   }
-} 
+}
