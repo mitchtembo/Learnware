@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import MainLayout from '@/layouts/MainLayout';
-import { CourseForm } from '@/components/course/CourseForm';
+import CourseForm from '@/components/course/CourseForm';
 import { Course, CourseContent } from '@/services/DataService';
 import { apiService } from '@/services/ApiServiceAdapter';
 import { Button } from '@/components/ui/button';
@@ -12,8 +15,23 @@ import { Search, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import CourseCard from '@/components/CourseCard';
 import { useRouter, usePathname } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import ProtectedRoute from '@/components/ProtectedRoute';
+
+const courseSchema = z.object({
+  name: z.string().min(3, "Course name must be at least 3 characters"),
+  topic: z.string().min(3, "Topic must be at least 3 characters"),
+  difficulty: z.string().min(3, "Difficulty must be at least 3 characters"),
+  description: z.string().optional(),
+  overview: z.string().min(10, "Overview is required"),
+  learning_objectives: z.array(z.object({ value: z.string().min(3, "Objective cannot be empty") })),
+  key_topics: z.array(z.object({
+    title: z.string().min(3, "Topic title cannot be empty"),
+    description: z.string().min(10, "Topic description cannot be empty")
+  })),
+  prerequisites: z.array(z.object({ value: z.string().min(3, "Prerequisite cannot be empty") })),
+});
+
+type CourseFormData = z.infer<typeof courseSchema>;
 
 const Courses = () => {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -25,6 +43,20 @@ const Courses = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
+
+  const form = useForm<CourseFormData>({
+    resolver: zodResolver(courseSchema),
+    defaultValues: {
+      name: "",
+      topic: "",
+      difficulty: "Beginner",
+      description: "",
+      overview: "",
+      learning_objectives: [],
+      key_topics: [],
+      prerequisites: [],
+    },
+  });
 
   useEffect(() => {
     // Initialize API service and load courses
@@ -56,12 +88,26 @@ const Courses = () => {
     }
   }, [pathname]);
 
-  const handleCreateCourse = async (courseData: Omit<Course, 'id' | 'created_at' | 'updated_at' | 'user_id'>, content: CourseContent | null) => {
+  const handleSubmit = async (data: CourseFormData) => {
+    setIsCreating(true);
     try {
-      setIsCreating(true);
-      const newCourse = await apiService.createCourse({ ...courseData, content: content ?? undefined });
+      const courseData: Omit<Course, 'id' | 'created_at' | 'updated_at' | 'user_id'> = {
+        name: data.name,
+        topic: data.topic,
+        difficulty: data.difficulty,
+        description: data.description,
+      };
+      const content: CourseContent = {
+        overview: data.overview,
+        learning_objectives: data.learning_objectives.map(o => o.value),
+        key_topics: data.key_topics,
+        prerequisites: data.prerequisites.map(p => p.value),
+      };
+
+      const newCourse = await apiService.createCourse({ ...courseData, content });
       setCourses(prev => [...prev, newCourse]);
       setIsDialogOpen(false);
+      form.reset();
       
       // Navigate to the courses page if we were on /courses/new
       if (pathname === '/courses/new') {
@@ -72,11 +118,11 @@ const Courses = () => {
         title: 'Success',
         description: 'Course created successfully',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating course:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create course. Please try again.',
+        description: `Failed to create course: ${error.message}`,
         variant: 'destructive',
       });
     } finally {
@@ -141,7 +187,13 @@ const Courses = () => {
                 <DialogHeader>
                   <DialogTitle>Create New Course</DialogTitle>
                 </DialogHeader>
-                <CourseForm onSubmit={handleCreateCourse} isSubmitting={isCreating} />
+                <CourseForm
+                  form={form}
+                  onSubmit={handleSubmit}
+                  onGenerate={() => {}}
+                  isLoading={isCreating}
+                  isGenerating={false}
+                />
               </DialogContent>
             </Dialog>
           </div>
