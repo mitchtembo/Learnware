@@ -1,305 +1,206 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
-import { ErrorHandler } from "@/utils/errorHandler"
-import { CacheService } from "./CacheService"
+
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { ErrorHandler } from "@/utils/errorHandler";
+import { CacheService } from "./CacheService";
 
 class GeminiService {
-  private genAI: GoogleGenerativeAI
-  private model: any
-  private readonly MODEL_NAME = "gemini-1.5-flash"
-  private readonly MAX_TOKENS = 8192
-  private initialized = false
-  private cache: CacheService
-  private readonly API_KEY_SETTING = "gemini_api_key"
+  private genAI: GoogleGenerativeAI;
+  private model: any;
+  private readonly MODEL_NAME = "gemini-1.5-flash";
+  private readonly MAX_TOKENS = 8192;
+  private initialized = false;
+  private cache: CacheService;
+  private readonly API_KEY_SETTING = "gemini_api_key";
 
   constructor() {
-    this.cache = CacheService.getInstance()
-    this.initializeFromStorage()
+    this.cache = CacheService.getInstance();
+    this.initializeFromStorage();
   }
 
   private async initializeFromStorage(): Promise<void> {
     try {
-      const apiKey = this.getApiKeyFromStorage()
+      const apiKey = this.getApiKeyFromStorage();
 
       if (apiKey) {
-        this.initialize(apiKey)
+        this.initialize(apiKey);
       } else {
         const envApiKey =
-          typeof window !== "undefined" ? import.meta.env?.VITE_GEMINI_API_KEY : process.env.NEXT_PUBLIC_GEMINI_API_KEY
+          typeof window !== "undefined"
+            ? import.meta.env?.VITE_GEMINI_API_KEY
+            : process.env.NEXT_PUBLIC_GEMINI_API_KEY;
         if (envApiKey) {
-          this.initialize(envApiKey)
-          // Save the environment key to storage for future use
-          await this.saveApiKey(envApiKey)
+          this.initialize(envApiKey);
+          await this.saveApiKey(envApiKey);
         } else {
-          console.warn("Gemini API key not found in local storage or environment variables")
+          console.warn(
+            "Gemini API key not found in local storage or environment variables"
+          );
         }
       }
     } catch (error) {
-      const appError = ErrorHandler.handle(error)
-      ErrorHandler.logError(appError)
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError);
 
       const apiKey =
-        typeof window !== "undefined" ? import.meta.env?.VITE_GEMINI_API_KEY : process.env.NEXT_PUBLIC_GEMINI_API_KEY
+        typeof window !== "undefined"
+          ? import.meta.env?.VITE_GEMINI_API_KEY
+          : process.env.NEXT_PUBLIC_GEMINI_API_KEY;
       if (apiKey) {
-        this.initialize(apiKey)
+        this.initialize(apiKey);
       } else {
-        console.warn("Gemini API key not found in environment variables")
+        console.warn("Gemini API key not found in environment variables");
       }
     }
   }
 
   public initialize(apiKey: string): void {
     try {
-      this.genAI = new GoogleGenerativeAI(apiKey)
+      this.genAI = new GoogleGenerativeAI(apiKey);
       this.model = this.genAI.getGenerativeModel({
         model: this.MODEL_NAME,
         generationConfig: {
           maxOutputTokens: this.MAX_TOKENS,
           temperature: 0.7,
         },
-      })
-      this.initialized = true
+      });
+      this.initialized = true;
     } catch (error) {
-      const appError = ErrorHandler.handle(error)
-      ErrorHandler.logError(appError)
-      this.initialized = false
-      throw appError
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError);
+      this.initialized = false;
+      throw appError;
     }
   }
 
   public isInitialized(): boolean {
-    return this.initialized
+    return this.initialized;
   }
 
   private ensureInitialized(): void {
     if (!this.initialized) {
       throw ErrorHandler.handle({
         code: "AUTH_ERROR",
-        message: "Gemini service is not initialized. Please set a valid API key.",
-      })
+        message:
+          "Gemini service is not initialized. Please set a valid API key.",
+      });
     }
   }
 
   private getApiKeyFromStorage(): string | null {
     try {
       if (typeof window === "undefined") {
-        return null
+        return null;
       }
-      return localStorage.getItem(this.API_KEY_SETTING)
+      return localStorage.getItem(this.API_KEY_SETTING);
     } catch (error) {
-      const appError = ErrorHandler.handle(error)
-      ErrorHandler.logError(appError)
-      return null
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError);
+      return null;
     }
   }
 
   public async getApiKey(): Promise<string | null> {
-    return this.getApiKeyFromStorage()
+    return this.getApiKeyFromStorage();
   }
 
   public async saveApiKey(apiKey: string): Promise<boolean> {
     try {
       if (typeof window === "undefined") {
-        return false
+        return false;
       }
-      localStorage.setItem(this.API_KEY_SETTING, apiKey)
-      this.initialize(apiKey)
-      return true
+      localStorage.setItem(this.API_KEY_SETTING, apiKey);
+      this.initialize(apiKey);
+      return true;
     } catch (error) {
-      const appError = ErrorHandler.handle(error)
-      ErrorHandler.logError(appError)
-      return false
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError);
+      return false;
     }
   }
 
-  private async getCachedOrFetch<T>(cacheKey: string, fetchFn: () => Promise<T>): Promise<T> {
-    const cached = this.cache.get<T>(cacheKey)
-    if (cached) return cached
+  private async getCachedOrFetch<T>(
+    cacheKey: string,
+    fetchFn: () => Promise<T>
+  ): Promise<T> {
+    const cached = this.cache.get<T>(cacheKey);
+    if (cached) return cached;
 
-    const result = await fetchFn()
-    this.cache.set(cacheKey, result)
-    return result
+    const result = await fetchFn();
+    this.cache.set(cacheKey, result);
+    return result;
   }
 
-  async generateCourseDescription(courseTitle: string): Promise<string> {
-    this.ensureInitialized()
-    const cacheKey = CacheService.generateGeminiKey("courseDescription", [courseTitle])
+  async generateCourseContent(courseName: string, courseTopic: string): Promise<any> {
+    this.ensureInitialized();
+    const cacheKey = CacheService.generateGeminiKey("courseContent", [
+      courseName,
+      courseTopic,
+    ]);
 
     try {
       return await this.getCachedOrFetch(cacheKey, async () => {
-        const prompt = `Generate a comprehensive and engaging course description for a course titled: "${courseTitle}".
-        
-        The description should be 3-5 sentences long and should:
-        1. Explain what the course covers
-        2. Mention key skills or knowledge students will gain
-        3. Be appropriate for an educational setting
-        4. Be professionally written but engaging
-        
-        Return ONLY the description text with no additional formatting or labels.`
+        const prompt = `
+          Generate a detailed, well-structured JSON object for a course titled "${courseName}" on the topic of "${courseTopic}".
 
-        const result = await this.model.generateContent(prompt)
-        const response = await result.response
-        return response.text().trim()
-      })
-    } catch (error) {
-      const appError = ErrorHandler.handle(error)
-      ErrorHandler.logError(appError)
-      return "Failed to generate course description. Please try again or enter your own description."
-    }
-  }
+          The JSON response must include the following fields:
+          - "overview": A comprehensive summary of what the course covers, its goals, and who it's for.
+          - "learning_objectives": An array of 5-7 key skills or knowledge points students will gain.
+          - "key_topics": An array of 4-6 modules or sections, each with a "title" and a "description" that outlines what will be taught in that module.
+          - "prerequisites": An array of 2-4 recommended skills or courses to take before starting this one.
 
-  async generateCourseContent(topic: string, description?: string): Promise<any> {
-    this.ensureInitialized()
-    const cacheKey = CacheService.generateGeminiKey("courseContent", [topic, description])
-
-    try {
-      return await this.getCachedOrFetch(cacheKey, async () => {
-        const prompt = `Generate a comprehensive course outline and introduction for: ${topic}.
-          ${description ? `Additional context: ${description}` : ""}
-          
-          I need the response to be formatted as a valid, well-structured JSON object.
-          
-          The JSON response should have the following structure:
+          Example structure:
           {
-            "courseTitle": "${topic}",
-            "courseDescription": "Detailed description of the course",
-            "overview": "Brief overview of the course",
-            "learningObjectives": ["objective1", "objective2", ...],
-            "keyTopics": [{"title": "Topic title", "description": "Topic description"}, ...],
-            "prerequisites": ["prerequisite1", "prerequisite2", ...],
-            "estimatedTimeHours": number
-          }`
+            "overview": "This course provides a complete introduction to...",
+            "learning_objectives": [
+              "Understand the core principles of...",
+              "Develop practical skills in...",
+              ...
+            ],
+            "key_topics": [
+              { "title": "Introduction to X", "description": "Learn the basics of..." },
+              { "title": "Advanced Techniques in Y", "description": "Explore complex concepts like..." },
+              ...
+            ],
+            "prerequisites": [
+              "Basic understanding of...",
+              "Familiarity with..."
+            ]
+          }
 
-        const result = await this.model.generateContent(prompt)
-        const response = await result.response
-        return this.tryParseJSON(response.text())
-      })
+          Return only the raw JSON object, without any markdown formatting, code blocks, or extra text.
+        `;
+
+        const result = await this.model.generateContent(prompt);
+        const response = await result.response;
+        return this.tryParseJSON(response.text());
+      });
     } catch (error) {
-      const appError = ErrorHandler.handle(error)
-      ErrorHandler.logError(appError)
-      return { error: "Failed to generate content", message: appError.message }
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError);
+      return {
+        error: "Failed to generate content",
+        message: appError.message,
+      };
     }
   }
-
-  async generateStudyMaterial(topic: string, concept: string): Promise<any> {
-    this.ensureInitialized()
-    try {
-      const prompt = `Create detailed study material for the concept "${concept}" in the topic "${topic}".
-        
-        I need the response to be formatted as a valid, well-structured JSON object.
-        
-        The JSON response should have the following structure:
-        {
-          "title": "${concept}",
-          "content": "Detailed explanation of the concept",
-          "summary": "Brief summary",
-          "keyPoints": ["point1", "point2", ...],
-          "examples": ["example1", "example2", ...],
-          "practiceQuestions": [
-            {"question": "Question text", "answer": "Answer text"}, 
-            ...
-          ]
-        }
-        
-        Important: Return ONLY the JSON with no additional text, markdown formatting, or code blocks.
-        Ensure all JSON fields are properly formatted with quotes around string values and commas between elements.`
-
-      const result = await this.model.generateContent(prompt)
-      const response = await result.response
-      const text = response.text()
-
-      return this.tryParseJSON(text)
-    } catch (error) {
-      console.error("Error generating study material:", error)
-      return { error: "Failed to generate study material", message: error.message }
-    }
-  }
-
-  async generateQuizQuestions(topic: string): Promise<any> {
-    this.ensureInitialized()
-    try {
-      const prompt = `Generate 5 quiz questions with answers for the topic: ${topic}.
-        
-        I need the response to be formatted as a valid, well-structured JSON object.
-        
-        The JSON response should have the following structure:
-        {
-          "topic": "${topic}",
-          "questions": [
-            {
-              "question": "Question text",
-              "options": ["option1", "option2", "option3", "option4"],
-              "correctAnswer": "Correct option text",
-              "explanation": "Explanation of the correct answer"
-            },
-            ...
-          ]
-        }
-        
-        Important: Return ONLY the JSON with no additional text, markdown formatting, or code blocks.
-        Ensure all JSON fields are properly formatted with quotes around string values and commas between elements.`
-
-      const result = await this.model.generateContent(prompt)
-      const response = await result.response
-      const text = response.text()
-
-      return this.tryParseJSON(text)
-    } catch (error) {
-      console.error("Error generating quiz questions:", error)
-      return { error: "Failed to generate quiz questions", message: error.message }
-    }
-  }
-
-  async getResearchAssistance(query: string): Promise<any> {
-    this.ensureInitialized()
-    try {
-      const prompt = `Provide research assistance for the following query: ${query}
-        
-        I need the response to be formatted as a valid, well-structured JSON object.
-        
-        The JSON response should have the following structure:
-        {
-          "query": "${query}",
-          "overview": "Overview of the research topic",
-          "keyFindings": ["finding1", "finding2", ...],
-          "relevantConcepts": ["concept1", "concept2", ...],
-          "suggestedResources": [
-            {"title": "Resource title", "url": "URL if available", "description": "Brief description"},
-            ...
-          ],
-          "furtherExploration": ["area1", "area2", ...]
-        }
-        
-        Important: Return ONLY the JSON with no additional text, markdown formatting, or code blocks.
-        Ensure all JSON fields are properly formatted with quotes around string values and commas between elements.`
-
-      const result = await this.model.generateContent(prompt)
-      const response = await result.response
-      const text = response.text()
-
-      return this.tryParseJSON(text)
-    } catch (error) {
-      console.error("Error getting research assistance:", error)
-      return { error: "Failed to get research assistance", message: error.message }
-    }
-  }
-
   private tryParseJSON(text: string): any {
     try {
-      return JSON.parse(text)
+      return JSON.parse(text);
     } catch (e) {
       try {
-        const match = text.match(/\{[\s\S]*\}/)
+        const match = text.match(/\{[\s\S]*\}/);
         if (match) {
-          return JSON.parse(match[0])
+          return JSON.parse(match[0]);
         }
       } catch (e2) {
-        const error = ErrorHandler.handle(e2)
-        ErrorHandler.logError(error)
+        const error = ErrorHandler.handle(e2);
+        ErrorHandler.logError(error);
       }
 
-      return { error: "Invalid response format", text }
+      return { error: "Invalid response format", text };
     }
   }
 }
 
-export const geminiService = new GeminiService()
+export const geminiService = new GeminiService();
+export const { generateCourseContent } = new GeminiService();
