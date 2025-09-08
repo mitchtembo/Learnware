@@ -12,6 +12,7 @@ import { Search, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import CourseCard from '@/components/CourseCard';
 import { useRouter, usePathname } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 const Courses = () => {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -57,7 +58,12 @@ const Courses = () => {
   const handleCreateCourse = async (courseData: Omit<Course, 'id' | 'created_at' | 'updated_at' | 'user_id'>, content: CourseContent | null) => {
     try {
       setIsCreating(true);
-      const newCourse = await apiService.createCourse({ ...courseData, content });
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+      const newCourse = await apiService.createCourse({ ...courseData, content: content ?? undefined, user_id: user.id });
       setCourses(prev => [...prev, newCourse]);
       setIsDialogOpen(false);
       
@@ -116,9 +122,9 @@ const Courses = () => {
   };
 
   const filteredCourses = courses.filter(course =>
-    course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (course.code && course.code.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (course.description && course.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    (course && course.name && course.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (course && course.code && course.code.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (course && course.description && course.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (

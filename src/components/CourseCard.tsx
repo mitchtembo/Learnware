@@ -118,12 +118,6 @@ const CourseCard = ({ course, compact = false }: CourseCardProps) => {
       <div className="p-4 space-y-4">
         <div className="flex flex-wrap gap-2">
           <Badge variant="outline">{course.difficulty}</Badge>
-          {course.estimated_hours && (
-            <Badge variant="outline" className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {course.estimated_hours} hours
-            </Badge>
-          )}
         </div>
 
         <div className="space-y-2">
@@ -137,11 +131,11 @@ const CourseCard = ({ course, compact = false }: CourseCardProps) => {
         <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            <span>{formatDate(course.createdAt)}</span>
+            <span>{formatDate(new Date(course.created_at!))}</span>
           </div>
           <div className="flex items-center gap-1">
             <Layers className="h-3 w-3" />
-            <span>{course.studyMaterials?.length || 0} materials</span>
+            <span>{course.study_materials?.length || 0} materials</span>
           </div>
           <div className="flex items-center gap-1">
             <BookOpenCheck className="h-3 w-3" />

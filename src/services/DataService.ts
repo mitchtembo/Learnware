@@ -13,12 +13,10 @@ export interface Course {
   study_materials?: any[];
   quizzes?: any[];
   progress?: number;
-  start_date?: string;   // snake_case
-  end_date?: string;     // snake_case
   created_at?: string;
+  start_date?: string;
+  end_date?: string;
 }
-
-
 
 export interface CourseContent {
   overview: string;

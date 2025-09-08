@@ -35,8 +35,8 @@ const formSchema = z.object({
   description: z.string().optional(),
   topic: z.string().optional(),
   difficulty: z.string().optional(),
-  startDate: z.date().optional(),
-  endDate: z.date().optional(),
+  start_date: z.date().optional(),
+  end_date: z.date().optional(),
 });
 
 type CourseFormValues = z.infer<typeof formSchema>;
@@ -61,8 +61,8 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
       description: initialData?.description || "",
       topic: initialData?.topic || "",
       difficulty: initialData?.difficulty || "",
-      startDate: initialData?.startDate ? new Date(initialData.startDate) : undefined,
-      endDate: initialData?.endDate ? new Date(initialData.endDate) : undefined,
+      start_date: initialData?.start_date ? new Date(initialData.start_date) : undefined,
+      end_date: initialData?.end_date ? new Date(initialData.end_date) : undefined,
     },
   });
 
@@ -151,19 +151,6 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="code"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Course Code</FormLabel>
-              <FormControl>
-                <Input placeholder="CS101" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         <FormField
           control={form.control}
@@ -247,7 +234,7 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="startDate"
+            name="start_date"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Start Date</FormLabel>
@@ -275,9 +262,10 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
                       mode="single"
                       selected={field.value}
                       onSelect={field.onChange}
-                      disabled={(date) =>
-                        date < new Date() || (form.getValues('endDate') ? date > form.getValues('endDate')! : false)
-                      }
+                      disabled={(date) => {
+                        const endDate = form.getValues("end_date");
+                        return date < new Date() || (endDate ? date > endDate : false);
+                      }}
                     />
                   </PopoverContent>
                 </Popover>
@@ -288,7 +276,7 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
 
           <FormField
             control={form.control}
-            name="endDate"
+            name="end_date"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>End Date</FormLabel>
@@ -317,7 +305,7 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) =>
-                        date < (form.getValues('startDate') || new Date())
+                        date < (form.getValues('start_date') || new Date())
                       }
                     />
                   </PopoverContent>
