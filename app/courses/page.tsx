@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import MainLayout from '@/layouts/MainLayout';
 import { CourseForm } from '@/components/course/CourseForm';
-import { Course } from '@/services/DataService';
-import { apiService } from '@/services/ApiService';
+import { Course, CourseContent } from '@/services/DataService';
+import { apiService } from '@/services/ApiServiceAdapter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -54,10 +54,10 @@ const Courses = () => {
     }
   }, [pathname]);
 
-  const handleCreateCourse = async (courseData: Omit<Course, 'id' | 'progress' | 'studentsEnrolled' | 'createdAt' | 'updatedAt'>) => {
+  const handleCreateCourse = async (courseData: Omit<Course, 'id' | 'created_at' | 'updated_at' | 'user_id'>, content: CourseContent | null) => {
     try {
       setIsCreating(true);
-      const newCourse = await apiService.createCourse(courseData);
+      const newCourse = await apiService.createCourse({ ...courseData, content });
       setCourses(prev => [...prev, newCourse]);
       setIsDialogOpen(false);
       
@@ -117,8 +117,8 @@ const Courses = () => {
 
   const filteredCourses = courses.filter(course =>
     course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    course.description.toLowerCase().includes(searchQuery.toLowerCase())
+    (course.code && course.code.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (course.description && course.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -133,7 +133,7 @@ const Courses = () => {
                 Create Course
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-lg overflow-y-auto max-h-[90vh]">
               <DialogHeader>
                 <DialogTitle>Create New Course</DialogTitle>
               </DialogHeader>

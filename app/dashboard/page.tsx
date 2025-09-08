@@ -84,7 +84,7 @@ export default function DashboardPage() {
     fetchData()
   }, [toast, user, authLoading])
 
-  const recentCourses = [...courses].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 3)
+  const recentCourses = [...courses].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()).slice(0, 3)
 
   return (
     <MainLayout>

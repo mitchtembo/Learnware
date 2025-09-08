@@ -2,12 +2,14 @@
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Book, Home, Search, BookOpen, PenLine, Brain } from "lucide-react"
+import { Book, Home, Search, BookOpen, PenLine, Brain, LogOut } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@/contexts/AuthContext"
 
 const Sidebar = () => {
   const pathname = usePathname()
+  const { signOut } = useAuth()
 
   const menuItems = [
     { icon: Home, label: "Dashboard", path: "/" },
@@ -43,6 +45,12 @@ const Sidebar = () => {
           })}
         </ul>
       </nav>
+      <div className="p-4">
+        <Button variant="ghost" className="w-full justify-start gap-2" onClick={signOut}>
+          <LogOut className="h-4 w-4" />
+          Logout
+        </Button>
+      </div>
     </div>
   )
 }

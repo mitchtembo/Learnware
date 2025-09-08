@@ -37,19 +37,22 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Redirect unauthenticated users to login, except for auth pages and home
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith("/auth") &&
-    request.nextUrl.pathname !== "/" &&
-    !request.nextUrl.pathname.startsWith("/_next") &&
-    !request.nextUrl.pathname.startsWith("/api")
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/auth/login"
+  const url = request.nextUrl.clone()
+  const { pathname } = request.nextUrl
+
+  const publicPaths = ['/auth/login', '/auth/signup', '/auth/forgot-password', '/auth/sign-up-success', '/auth/error', '/auth/callback']
+
+  // if user is not logged in and not on a public path, redirect to /auth/login
+  if (!user && !publicPaths.includes(pathname)) {
+    url.pathname = '/auth/login'
     return NextResponse.redirect(url)
   }
 
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
+  // if user is logged in and on an auth path, redirect to /
+  if (user && publicPaths.includes(pathname)) {
+    url.pathname = '/'
+    return NextResponse.redirect(url)
+  }
+
   return supabaseResponse
 }

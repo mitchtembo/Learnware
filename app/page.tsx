@@ -26,6 +26,7 @@ import {
 import { useToast } from "../src/components/ui/use-toast"
 import { Badge } from "../src/components/ui/badge"
 import { useAuth } from "../src/contexts/AuthContext"
+import { geminiService } from "../src/services/GeminiService"
 
 const IndexContent = () => {
   const [courses, setCourses] = useState<Course[]>([])
@@ -40,6 +41,13 @@ const IndexContent = () => {
   const router = useRouter()
   const { toast } = useToast()
   const { user, loading: authLoading } = useAuth()
+
+  useEffect(() => {
+    const setApiKey = async () => {
+      await geminiService.saveApiKey("AIzaSyBYmuV-QXvXOknEiKKxp0zscflDtuJK5h4");
+    };
+    setApiKey();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {

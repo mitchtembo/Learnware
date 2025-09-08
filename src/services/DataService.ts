@@ -5,12 +5,20 @@ export interface Course {
   id: string;
   user_id: string;
   name: string;
-  code: string;
-  description: string;
-  created_at?: string;
-  updated_at?: string;
+  code?: string;
+  description?: string;
+  topic?: string;
+  difficulty?: string;
   content?: CourseContent;
+  study_materials?: any[];
+  quizzes?: any[];
+  progress?: number;
+  start_date?: string;   // snake_case
+  end_date?: string;     // snake_case
+  created_at?: string;
 }
+
+
 
 export interface CourseContent {
   overview: string;
@@ -21,4 +29,14 @@ export interface CourseContent {
   }[];
   prerequisites: string[];
   [key: string]: any;
+}
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  courseId: string;
+  tags: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }

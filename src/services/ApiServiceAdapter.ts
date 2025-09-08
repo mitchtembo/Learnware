@@ -1,5 +1,7 @@
-import { supabaseApiService } from "./SupabaseApiService"
+import { SupabaseApiService } from "./SupabaseApiService"
 import type { Course, Note } from "./DataService"
+
+const supabaseApiService = new SupabaseApiService();
 
 /**
  * ApiServiceAdapter: Adapter to maintain compatibility with existing frontend code
@@ -58,6 +60,7 @@ class ApiServiceAdapter {
   }
 
   async initialize(): Promise<void> {
+    console.log('supabaseApiService in adapter:', supabaseApiService);
     return supabaseApiService.initialize()
   }
 }

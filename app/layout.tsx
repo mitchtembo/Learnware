@@ -7,6 +7,7 @@ import { AuthProvider } from "../src/contexts/AuthContext"
 import { TooltipProvider } from "../src/components/ui/tooltip"
 import { Suspense } from "react"
 import "./globals.css"
+import { ApiKeyInitializer } from "@/components/ApiKeyInitializer";
 
 export const metadata: Metadata = {
   title: "v0 App",
@@ -32,9 +33,11 @@ html {
       </head>
       <body>
         <Suspense fallback={null}>
-          <AuthProvider>
-            <TooltipProvider>{children}</TooltipProvider>
-          </AuthProvider>
+          <ApiKeyInitializer>
+            <AuthProvider>
+              <TooltipProvider>{children}</TooltipProvider>
+            </AuthProvider>
+          </ApiKeyInitializer>
         </Suspense>
         <Analytics />
       </body>

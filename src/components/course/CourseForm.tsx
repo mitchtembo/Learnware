@@ -27,32 +27,30 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon, Loader2, Sparkles } from "lucide-react";
 import { geminiService } from "../../services/GeminiService";
 import { useToast } from "@/components/ui/use-toast";
+import { CourseContent } from "@/services/DataService";
 
 const formSchema = z.object({
   name: z.string().min(2, "Course name must be at least 2 characters"),
-  code: z.string().min(2, "Course code must be at least 2 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  startDate: z.date(),
-  endDate: z.date(),
-  category: z.string(),
-  topic: z.string(),
-  difficulty: z.string(),
+  code: z.string().optional(),
+  description: z.string().optional(),
+  topic: z.string().optional(),
+  difficulty: z.string().optional(),
+  startDate: z.date().optional(),
+  endDate: z.date().optional(),
 });
 
 type CourseFormValues = z.infer<typeof formSchema>;
 
 interface CourseFormProps {
-  onSubmit: (data: CourseFormValues) => void;
+  onSubmit: (data: any, content: CourseContent | null) => void;
   initialData?: Partial<CourseFormValues>;
   isSubmitting?: boolean;
 }
 
 export function CourseForm({ onSubmit, initialData, isSubmitting = false }: CourseFormProps) {
-  const [startDate, setStartDate] = useState<Date | undefined>(
-    initialData?.startDate
-  );
-  const [endDate, setEndDate] = useState<Date | undefined>(initialData?.endDate);
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<CourseContent | null>(null);
   const { toast } = useToast();
 
   const form = useForm<CourseFormValues>({
@@ -61,11 +59,10 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
       name: initialData?.name || "",
       code: initialData?.code || "",
       description: initialData?.description || "",
-      category: initialData?.category || "",
       topic: initialData?.topic || "",
       difficulty: initialData?.difficulty || "",
-      startDate: startDate || new Date(),
-      endDate: endDate || new Date(),
+      startDate: initialData?.startDate ? new Date(initialData.startDate) : undefined,
+      endDate: initialData?.endDate ? new Date(initialData.endDate) : undefined,
     },
   });
 
@@ -88,9 +85,45 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
     }
   };
 
+  const handleGenerateContent = async () => {
+    const topic = form.getValues("topic");
+    const description = form.getValues("description");
+    if (!topic) {
+      toast({
+        title: "Topic required",
+        description: "Please enter a topic to generate content.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsGeneratingContent(true);
+      const content = await geminiService.generateCourseContent(topic, description);
+      setGeneratedContent(content);
+      toast({
+        title: "Content Generated",
+        description: "Course content has been successfully generated.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate course content.",
+        variant: "destructive",
+      });
+      console.error("Error generating content:", error);
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
+  
+  const handleFormSubmit = (data: CourseFormValues) => {
+    onSubmit(data, generatedContent);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -107,7 +140,7 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
                     if (!form.getValues('description')) {
                       const debouncedGenerate = setTimeout(() => {
                         generateDescription(e.target.value);
-                      }, 800);
+                      }, 300);
                       return () => clearTimeout(debouncedGenerate);
                     }
                   }}
@@ -187,6 +220,30 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
           )}
         />
 
+        <div className="flex items-center justify-center">
+            <Button
+                type="button"
+                onClick={handleGenerateContent}
+                disabled={isGeneratingContent || !form.getValues('topic')}
+                className="w-full"
+            >
+                {isGeneratingContent ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                    <Sparkles className="h-4 w-4 mr-1" />
+                )}
+                Generate Course Content
+            </Button>
+        </div>
+
+        {generatedContent && (
+            <div className="p-4 border rounded-md bg-muted">
+                <h4 className="font-semibold">Generated Content Preview</h4>
+                <p className="text-sm text-muted-foreground">Overview: {generatedContent.overview}</p>
+                <p className="text-sm text-muted-foreground">Objectives: {generatedContent.learning_objectives.join(', ')}</p>
+            </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -219,7 +276,7 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) =>
-                        date < new Date() || (endDate ? date > endDate : false)
+                        date < new Date() || (form.getValues('endDate') ? date > form.getValues('endDate')! : false)
                       }
                     />
                   </PopoverContent>
@@ -260,7 +317,7 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) =>
-                        date < (startDate || new Date())
+                        date < (form.getValues('startDate') || new Date())
                       }
                     />
                   </PopoverContent>
@@ -271,70 +328,37 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="category"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Category</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="computer-science">
-                      Computer Science
-                    </SelectItem>
-                    <SelectItem value="mathematics">Mathematics</SelectItem>
-                    <SelectItem value="physics">Physics</SelectItem>
-                    <SelectItem value="chemistry">Chemistry</SelectItem>
-                    <SelectItem value="biology">Biology</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <FormField
+          control={form.control}
+          name="difficulty"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Difficulty</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select difficulty" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="beginner">Beginner</SelectItem>
+                  <SelectItem value="intermediate">Intermediate</SelectItem>
+                  <SelectItem value="advanced">Advanced</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-          <FormField
-            control={form.control}
-            name="difficulty"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Difficulty</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select difficulty" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="advanced">Advanced</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? (
+        <Button type="submit" className="w-full" disabled={isSubmitting || isGeneratingContent}>
+          {isSubmitting || isGeneratingContent ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {initialData ? "Updating Course..." : "Creating Course..."}
+              {initialData ? "Updating Course..." : "Generating Course Content..."}
             </>
           ) : (
             initialData ? "Update Course" : "Create Course"
