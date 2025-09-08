@@ -42,16 +42,18 @@ const IndexContent = () => {
   const { toast } = useToast()
   const { user, loading: authLoading } = useAuth()
 
+  // Set API key for Gemini
   useEffect(() => {
     const setApiKey = async () => {
-      await geminiService.saveApiKey("AIzaSyBYmuV-QXvXOknEiKKxp0zscflDtuJK5h4");
-    };
-    setApiKey();
-  }, []);
+      await geminiService.saveApiKey("AIzaSyBYmuV-QXvXOknEiKKxp0zscflDtuJK5h4")
+    }
+    setApiKey()
+  }, [])
 
+  // Fetch dashboard data
   useEffect(() => {
     const fetchData = async () => {
-      if (authLoading) return // Wait for auth to load
+      if (authLoading) return
 
       try {
         setIsLoading(true)
@@ -59,18 +61,31 @@ const IndexContent = () => {
 
         if (user) {
           const fetchedCourses = await apiService.getCourses()
-          setCourses(fetchedCourses)
 
-          const completed = fetchedCourses.filter((c) => c.progress === 100).length
-          const totalMaterials = fetchedCourses.reduce((acc, course) => acc + (course.studyMaterials?.length || 0), 0)
-          const totalQuizzes = fetchedCourses.reduce((acc, course) => acc + (course.quizzes?.length || 0), 0)
+          // Ensure createdAt is a Date object
+          const coursesWithDate = fetchedCourses.map(c => ({
+            ...c,
+            createdAt: c.createdAt ? new Date(c.createdAt) : new Date(),
+          }))
+
+          setCourses(coursesWithDate)
+
+          const completed = coursesWithDate.filter(c => c.progress === 100).length
+          const totalMaterials = coursesWithDate.reduce(
+            (acc, c) => acc + (c.studyMaterials?.length || 0),
+            0
+          )
+          const totalQuizzes = coursesWithDate.reduce(
+            (acc, c) => acc + (c.quizzes?.length || 0),
+            0
+          )
           const avgProgress =
-            fetchedCourses.length > 0
-              ? fetchedCourses.reduce((acc, c) => acc + c.progress, 0) / fetchedCourses.length
+            coursesWithDate.length > 0
+              ? coursesWithDate.reduce((acc, c) => acc + c.progress, 0) / coursesWithDate.length
               : 0
 
           setStats({
-            totalCourses: fetchedCourses.length,
+            totalCourses: coursesWithDate.length,
             completedCourses: completed,
             totalMaterials,
             totalQuizzes,
@@ -92,7 +107,10 @@ const IndexContent = () => {
     fetchData()
   }, [toast, user, authLoading])
 
-  const recentCourses = [...courses].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 3)
+  const recentCourses = [...courses]
+    .filter(c => c.createdAt)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 3)
 
   if (!user && !authLoading) {
     return (
@@ -121,6 +139,7 @@ const IndexContent = () => {
   return (
     <MainLayout>
       <div className="space-y-8">
+        {/* Dashboard Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -141,6 +160,7 @@ const IndexContent = () => {
           </div>
         </div>
 
+        {/* Stats Cards */}
         {isLoading || authLoading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -189,6 +209,7 @@ const IndexContent = () => {
               </Card>
             </div>
 
+            {/* Recent Courses */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
                 <Card className="p-6">
@@ -205,7 +226,7 @@ const IndexContent = () => {
 
                   {recentCourses.length > 0 ? (
                     <div className="grid grid-cols-1 gap-4">
-                      {recentCourses.map((course) => (
+                      {recentCourses.map(course => (
                         <CourseCard key={course.id} course={course} compact={true} />
                       ))}
                     </div>
@@ -219,13 +240,16 @@ const IndexContent = () => {
                     </div>
                   )}
                 </Card>
+              </div>
 
+              {/* AI Features / Getting Started */}
+              <div className="space-y-6">
+                {/* Ready-to-Use AI Features */}
                 <Card className="p-6">
                   <div className="flex items-center gap-2 mb-6">
                     <Zap className="h-5 w-5 text-primary" />
                     <h2 className="text-xl font-semibold">Ready-to-Use AI Features</h2>
                   </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="border rounded-lg p-4">
                       <LightbulbIcon className="h-8 w-8 text-yellow-500 mb-2" />
@@ -234,7 +258,6 @@ const IndexContent = () => {
                         Create course materials and study guides using pre-configured Gemini AI integration
                       </p>
                     </div>
-
                     <div className="border rounded-lg p-4">
                       <Brain className="h-8 w-8 text-purple-500 mb-2" />
                       <h3 className="font-medium mb-1">Research Assistant</h3>
@@ -242,7 +265,6 @@ const IndexContent = () => {
                         Get answers for complex topics with Google's Gemini API ready out of the box
                       </p>
                     </div>
-
                     <div className="border rounded-lg p-4">
                       <Search className="h-8 w-8 text-blue-500 mb-2" />
                       <h3 className="font-medium mb-1">Web Integration</h3>
@@ -250,7 +272,6 @@ const IndexContent = () => {
                         Supplement your learning with relevant web resources automatically gathered for you
                       </p>
                     </div>
-
                     <div className="border rounded-lg p-4">
                       <Award className="h-8 w-8 text-green-500 mb-2" />
                       <h3 className="font-medium mb-1">Progress Tracking</h3>
@@ -260,45 +281,25 @@ const IndexContent = () => {
                     </div>
                   </div>
                 </Card>
-              </div>
 
-              <div className="space-y-6">
+                {/* Getting Started */}
                 <Card className="p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <GraduationCap className="h-5 w-5 text-primary" />
                     <h2 className="text-xl font-semibold">Getting Started</h2>
                   </div>
-
                   <div className="space-y-3">
-                    <div className="flex gap-3 items-start">
-                      <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
-                        <span className="text-xs font-medium">1</span>
-                      </div>
-                      <p className="text-sm">Create a new course to begin your learning journey</p>
-                    </div>
-
-                    <div className="flex gap-3 items-start">
-                      <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
-                        <span className="text-xs font-medium">2</span>
-                      </div>
-                      <p className="text-sm">Generate AI-powered content for comprehensive learning</p>
-                    </div>
-
-                    <div className="flex gap-3 items-start">
-                      <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
-                        <span className="text-xs font-medium">3</span>
-                      </div>
-                      <p className="text-sm">Create study materials and quizzes to test your knowledge</p>
-                    </div>
-
-                    <div className="flex gap-3 items-start">
-                      <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
-                        <span className="text-xs font-medium">4</span>
-                      </div>
-                      <p className="text-sm">Track your progress and continue your learning journey</p>
-                    </div>
+                    {["Create a new course", "Generate AI-powered content", "Create study materials and quizzes", "Track your progress"].map(
+                      (step, i) => (
+                        <div key={i} className="flex gap-3 items-start">
+                          <div className="bg-primary/10 rounded-full w-6 h-6 flex items-center justify-center shrink-0 mt-0.5">
+                            <span className="text-xs font-medium">{i + 1}</span>
+                          </div>
+                          <p className="text-sm">{step}</p>
+                        </div>
+                      )
+                    )}
                   </div>
-
                   <div className="mt-4">
                     <Button className="w-full" onClick={() => router.push("/courses/new")}>
                       <PlusCircle className="h-4 w-4 mr-2" />

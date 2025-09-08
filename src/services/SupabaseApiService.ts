@@ -1,151 +1,210 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { ApiService } from "./ApiService";
-import { Course, Note } from "./DataService";
-import { from } from 'rxjs';
-import { map } from 'rxjs/operators';
+// SupabaseApiService.ts
+import { createClient } from "@/lib/supabase/client";
+import type { Course, Note } from "./DataService";
 
-export class SupabaseApiService implements ApiService {
-    private supabase: SupabaseClient;
+const supabase = createClient();
 
-    constructor() {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        this.supabase = createClient(supabaseUrl, supabaseKey);
-    }
+const supabaseApiService = {
+    async initialize() {
+        // Supabase client is already initialized in client.ts; nothing to do here.
+    },
 
-    async initialize(): Promise<void> {
-        // No-op for now
-        return Promise.resolve();
-    }
-
+    // Courses
     async getCourses(): Promise<Course[]> {
-        const { data, error } = await this.supabase
-            .from('courses')
-            .select('*');
-        if (error) {
-            throw new Error(error.message);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
+
+        const { data, error } = await supabase
+            .from("courses")
+            .select("*")
+            .eq("user_id", user.id);
+
+        if (error) throw new Error(error.message);
+        return data || [];
+    },
+
+    async getCourseById(id: string): Promise<Course | null> {
+        const { data, error } = await supabase
+            .from("courses")
+            .select("*")
+            .eq("id", id)
+            .single();
+
+        if (error?.code === "PGRST116") return null; // row not found
+        if (error) throw new Error(error.message);
+        return data;
+    },
+
+    async createCourse(courseData: Omit<Course, "id" | "createdAt" | "updatedAt" | "user_id">): Promise<Course> {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
+        // Remove any leftover `code` field if present
+        const { code, ...courseToInsert } = courseData;
+
+        const { data, error } = await supabase
+            .from("courses")
+            .insert({ ...courseToInsert, user_id: user.id })
+            .select()
+            .single();
+
+        if (error) throw new Error(error.message);
+        return data;
+    },
+
+    async updateCourse(id: string, courseData: Partial<Course>): Promise<Course> {
+        const { data, error } = await supabase
+            .from("courses")
+            .update(courseData)
+            .eq("id", id)
+            .select()
+            .single();
+
+        if (error) throw new Error(error.message);
+        return data;
+    },
+
+    async deleteCourse(id: string): Promise<boolean> {
+        const { error } = await supabase
+            .from("courses")
+            .delete()
+            .eq("id", id);
+
+        if (error) throw new Error(error.message);
+        return true;
+    },
+
+    // Notes
+    async getNotes(): Promise<Note[]> {
+        const { data, error } = await supabase.from("notes").select("*");
+        if (error) throw new Error(error.message);
+        return data || [];
+    },
+
+    async getNoteById(id: string): Promise<Note | null> {
+        const { data, error } = await supabase
+            .from("notes")
+            .select("*")
+            .eq("id", id)
+            .single();
+
+        if (error?.code === "PGRST116") return null;
+        if (error) throw new Error(error.message);
+        return data;
+    },
+
+    async getNotesByCourse(courseId: string): Promise<Note[]> {
+        const { data, error } = await supabase
+            .from("notes")
+            .select("*")
+            .eq("course_id", courseId);
+
+        if (error) throw new Error(error.message);
+        return data || [];
+    },
+
+    async createNote(noteData: Omit<Note, "id" | "createdAt" | "updatedAt">): Promise<Note> {
+        const { data, error } = await supabase
+            .from("notes")
+            .insert(noteData)
+            .select()
+            .single();
+
+        if (error) throw new Error(error.message);
+        return data;
+    },
+
+    async updateNote(id: string, noteData: Partial<Note>): Promise<Note> {
+        const { data, error } = await supabase
+            .from("notes")
+            .update(noteData)
+            .eq("id", id)
+            .select()
+            .single();
+
+        if (error) throw new Error(error.message);
+        return data;
+    },
+
+    async deleteNote(id: string): Promise<boolean> {
+        const { error } = await supabase
+            .from("notes")
+            .delete()
+            .eq("id", id);
+
+        if (error) throw new Error(error.message);
+        return true;
+    }
+};
+
+// Adapter
+class ApiServiceAdapter {
+    private initialized = false;
+
+    async initialize() {
+        if (!this.initialized) {
+            await supabaseApiService.initialize();
+            this.initialized = true;
         }
-        return data as Course[];
+    }
+
+    // Courses
+    async getCourses(): Promise<Course[]> {
+        await this.initialize();
+        return supabaseApiService.getCourses();
     }
 
     async getCourseById(id: string): Promise<Course | null> {
-        const { data, error } = await this.supabase
-            .from('courses')
-            .select('*')
-            .eq('id', id)
-            .single();
-        if (error) {
-            if (error.code === 'PGRST116') { // PostgREST error for no rows found
-                return null;
-            }
-            throw new Error(error.message);
-        }
-        return data as Course | null;
+        await this.initialize();
+        return supabaseApiService.getCourseById(id);
     }
 
-    async createCourse(course: Omit<Course, 'id' | 'created_at' | 'updated_at' | 'user_id'>): Promise<Course> {
-        const { data, error } = await this.supabase
-            .from('courses')
-            .insert([course])
-            .single();
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data as Course;
+    async createCourse(courseData: Omit<Course, "id" | "createdAt" | "updatedAt" | "user_id">): Promise<Course> {
+        await this.initialize();
+        return supabaseApiService.createCourse(courseData);
     }
 
     async updateCourse(id: string, courseData: Partial<Course>): Promise<Course> {
-        const { data, error } = await this.supabase
-            .from('courses')
-            .update(courseData)
-            .eq('id', id)
-            .single();
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data as Course;
+        await this.initialize();
+        return supabaseApiService.updateCourse(id, courseData);
     }
 
     async deleteCourse(id: string): Promise<boolean> {
-        const { error } = await this.supabase
-            .from('courses')
-            .delete()
-            .eq('id', id);
-        if (error) {
-            throw new Error(error.message);
-        }
-        return true;
+        await this.initialize();
+        return supabaseApiService.deleteCourse(id);
     }
 
+    // Notes
     async getNotes(): Promise<Note[]> {
-        const { data, error } = await this.supabase
-            .from('notes')
-            .select('*');
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data as Note[];
+        await this.initialize();
+        return supabaseApiService.getNotes();
     }
 
     async getNoteById(id: string): Promise<Note | null> {
-        const { data, error } = await this.supabase
-            .from('notes')
-            .select('*')
-            .eq('id', id)
-            .single();
-        if (error) {
-            if (error.code === 'PGRST116') {
-                return null;
-            }
-            throw new Error(error.message);
-        }
-        return data as Note | null;
+        await this.initialize();
+        return supabaseApiService.getNoteById(id);
     }
 
     async getNotesByCourse(courseId: string): Promise<Note[]> {
-        const { data, error } = await this.supabase
-            .from('notes')
-            .select('*')
-            .eq('course_id', courseId);
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data as Note[];
+        await this.initialize();
+        return supabaseApiService.getNotesByCourse(courseId);
     }
 
     async createNote(noteData: Omit<Note, "id" | "createdAt" | "updatedAt">): Promise<Note> {
-        const { data, error } = await this.supabase
-            .from('notes')
-            .insert([noteData])
-            .single();
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data as Note;
+        await this.initialize();
+        return supabaseApiService.createNote(noteData);
     }
 
     async updateNote(id: string, noteData: Partial<Note>): Promise<Note> {
-        const { data, error } = await this.supabase
-            .from('notes')
-            .update(noteData)
-            .eq('id', id)
-            .single();
-        if (error) {
-            throw new Error(error.message);
-        }
-        return data as Note;
+        await this.initialize();
+        return supabaseApiService.updateNote(id, noteData);
     }
 
     async deleteNote(id: string): Promise<boolean> {
-        const { error } = await this.supabase
-            .from('notes')
-            .delete()
-            .eq('id', id);
-        if (error) {
-            throw new Error(error.message);
-        }
-        return true;
+        await this.initialize();
+        return supabaseApiService.deleteNote(id);
     }
 }
 
-export const supabaseApiService = new SupabaseApiService();
+export const apiService = new ApiServiceAdapter();
+export { supabaseApiService };

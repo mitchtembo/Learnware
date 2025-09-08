@@ -10,12 +10,12 @@ export interface Course {
   topic?: string;
   difficulty?: string;
   content?: CourseContent;
-  study_materials?: any[];
-  quizzes?: any[];
+  study_materials?: any[]; // Assuming JSONB[] is represented as any[]
+  quizzes?: any[]; // Assuming JSONB[] is represented as any[]
   progress?: number;
+  start_date?: string; // Representing date as string
+  end_date?: string; // Representing date as string
   created_at?: string;
-  start_date?: string;
-  end_date?: string;
 }
 
 export interface CourseContent {

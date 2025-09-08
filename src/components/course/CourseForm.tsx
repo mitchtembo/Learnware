@@ -31,7 +31,6 @@ import { CourseContent } from "@/services/DataService";
 
 const formSchema = z.object({
   name: z.string().min(2, "Course name must be at least 2 characters"),
-  code: z.string().optional(),
   description: z.string().optional(),
   topic: z.string().optional(),
   difficulty: z.string().optional(),
@@ -57,7 +56,6 @@ export function CourseForm({ onSubmit, initialData, isSubmitting = false }: Cour
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: initialData?.name || "",
-      code: initialData?.code || "",
       description: initialData?.description || "",
       topic: initialData?.topic || "",
       difficulty: initialData?.difficulty || "",

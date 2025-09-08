@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return
     const supabase = createClient()
     await supabase.auth.signOut()
+    window.location.href = "/auth/login"
   }
 
   const value = {

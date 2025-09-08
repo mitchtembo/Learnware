@@ -1,68 +1,73 @@
-import { SupabaseApiService } from "./SupabaseApiService"
-import type { Course, Note } from "./DataService"
+import { supabaseApiService } from "./SupabaseApiService";
+import type { Course, Note } from "./DataService";
 
-const supabaseApiService = new SupabaseApiService();
-
-/**
- * ApiServiceAdapter: Adapter to maintain compatibility with existing frontend code
- * This allows us to switch from mock API to Supabase without changing frontend components
- */
 class ApiServiceAdapter {
-  // Course API methods - delegate to Supabase service
-  async getCourses(): Promise<Course[]> {
-    return supabaseApiService.getCourses()
-  }
+    private initialized = false;
 
-  async getCourseById(id: string): Promise<Course | null> {
-    return supabaseApiService.getCourseById(id)
-  }
+    // Call this at app start
+    async initialize() {
+        if (!this.initialized) {
+            await supabaseApiService.initialize();
+            this.initialized = true;
+        }
+    }
 
-  async createCourse(courseData: Omit<Course, "id" | "createdAt" | "updatedAt">): Promise<Course> {
-    return supabaseApiService.createCourse(courseData)
-  }
+    // Courses
+    async getCourses(): Promise<Course[]> {
+        await this.initialize();
+        return supabaseApiService.getCourses();
+    }
 
-  async updateCourse(id: string, courseData: Partial<Course>): Promise<Course> {
-    return supabaseApiService.updateCourse(id, courseData)
-  }
+    async getCourseById(id: string): Promise<Course | null> {
+        await this.initialize();
+        return supabaseApiService.getCourseById(id);
+    }
 
-  async deleteCourse(id: string): Promise<boolean> {
-    return supabaseApiService.deleteCourse(id)
-  }
+    async createCourse(courseData: Omit<Course, "id" | "createdAt" | "updatedAt" | "user_id">): Promise<Course> {
+        await this.initialize();
+        return supabaseApiService.createCourse(courseData);
+    }
 
-  // Note API methods - delegate to Supabase service
-  async getNotes(): Promise<Note[]> {
-    return supabaseApiService.getNotes()
-  }
+    async updateCourse(id: string, courseData: Partial<Course>): Promise<Course> {
+        await this.initialize();
+        return supabaseApiService.updateCourse(id, courseData);
+    }
 
-  async getNoteById(id: string): Promise<Note | null> {
-    return supabaseApiService.getNoteById(id)
-  }
+    async deleteCourse(id: string): Promise<boolean> {
+        await this.initialize();
+        return supabaseApiService.deleteCourse(id);
+    }
 
-  async getNotesByCourse(courseId: string): Promise<Note[]> {
-    return supabaseApiService.getNotesByCourse(courseId)
-  }
+    // Notes
+    async getNotes(): Promise<Note[]> {
+        await this.initialize();
+        return supabaseApiService.getNotes();
+    }
 
-  async createNote(noteData: Omit<Note, "id" | "createdAt" | "updatedAt">): Promise<Note> {
-    return supabaseApiService.createNote(noteData)
-  }
+    async getNoteById(id: string): Promise<Note | null> {
+        await this.initialize();
+        return supabaseApiService.getNoteById(id);
+    }
 
-  async updateNote(id: string, noteData: Partial<Note>): Promise<Note> {
-    return supabaseApiService.updateNote(id, noteData)
-  }
+    async getNotesByCourse(courseId: string): Promise<Note[]> {
+        await this.initialize();
+        return supabaseApiService.getNotesByCourse(courseId);
+    }
 
-  async deleteNote(id: string): Promise<boolean> {
-    return supabaseApiService.deleteNote(id)
-  }
+    async createNote(noteData: Omit<Note, "id" | "createdAt" | "updatedAt">): Promise<Note> {
+        await this.initialize();
+        return supabaseApiService.createNote(noteData);
+    }
 
-  // Helper methods for compatibility
-  private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2)
-  }
+    async updateNote(id: string, noteData: Partial<Note>): Promise<Note> {
+        await this.initialize();
+        return supabaseApiService.updateNote(id, noteData);
+    }
 
-  async initialize(): Promise<void> {
-    console.log('supabaseApiService in adapter:', supabaseApiService);
-    return supabaseApiService.initialize()
-  }
+    async deleteNote(id: string): Promise<boolean> {
+        await this.initialize();
+        return supabaseApiService.deleteNote(id);
+    }
 }
 
-export const apiService = new ApiServiceAdapter()
+export const apiService = new ApiServiceAdapter();
