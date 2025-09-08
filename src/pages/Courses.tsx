@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import MainLayout from "../layouts/MainLayout"
-import { CourseForm } from "../components/course/CourseForm"
+import CourseForm from "../components/course/CourseForm"
 import type { Course } from "../services/DataService"
 import { apiService } from "../services/ApiServiceAdapter"
 import { Button } from "../components/ui/button"
