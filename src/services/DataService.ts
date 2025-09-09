@@ -36,15 +36,6 @@ export interface Course {
   created_at?: string;
 }
 
-export interface Note {
-  id: string;
-  course_id: string;
-  title: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export const getCourseById = async (courseId: string): Promise<Course | null> => {
   try {
     const cachedCourse = cacheService.get<Course>(`course_${courseId}`);

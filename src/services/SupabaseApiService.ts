@@ -1,6 +1,7 @@
 // SupabaseApiService.ts
 import { createClient } from "@/lib/supabase/client";
-import type { Course, Note } from "./DataService";
+import type { Course } from "./DataService";
+import type { Note } from "./DataService";
 
 const supabase = createClient();
 
@@ -40,8 +41,7 @@ const supabaseApiService = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not authenticated");
 
-        // Remove any leftover `code` field if present
-        const { code, ...courseToInsert } = courseData;
+        const courseToInsert = { ...courseData };
 
         const { data, error } = await supabase
             .from("courses")
