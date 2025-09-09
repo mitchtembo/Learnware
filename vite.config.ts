@@ -1,17 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 
-// __dirname is not available in ESM; recreate it so Vercel / Node ESM runtime doesn't throw
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+// Use ESM-safe path resolution (avoid referencing __dirname directly)
+const srcPath = fileURLToPath(new URL('./src', import.meta.url))
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, './src'),
+      '@': srcPath,
     },
   },
   define: {
