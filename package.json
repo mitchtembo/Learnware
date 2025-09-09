@@ -2,6 +2,7 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -41,6 +42,7 @@
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
     "@tanstack/react-query": "latest",
+    "@types/lodash.debounce": "^4.0.9",
     "@vitejs/plugin-react-swc": "latest",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
@@ -49,6 +51,7 @@
     "date-fns": "latest",
     "embla-carousel-react": "latest",
     "geist": "latest",
+    "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.454.0",
     "react": "^18",
     "react-day-picker": "latest",

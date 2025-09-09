@@ -1,6 +1,4 @@
 "use client"
-
-import { useRouter } from "next/navigation"
 import type { Course } from "../services/DataService"
 import { Card } from "./ui/card"
 import { Progress } from "./ui/progress"
@@ -64,10 +62,10 @@ const iconMap: Record<string, LucideIcon> = {
 interface CourseCardProps {
   course: Course
   compact?: boolean
+  onClick?: (course: Course) => void
 }
 
-const CourseCard = ({ course, compact = false }: CourseCardProps) => {
-  const router = useRouter()
+const CourseCard = ({ course, compact = false, onClick }: CourseCardProps) => {
   const background = getCourseBackground(course.topic || course.name)
   const IconComponent = iconMap[background.icon] || Book
 
@@ -80,7 +78,9 @@ const CourseCard = ({ course, compact = false }: CourseCardProps) => {
   }
 
   const handleClick = () => {
-    router.push(`/courses/${course.id}`)
+    if (onClick) return onClick(course)
+    // fallback: use window.location
+    window.location.href = `/courses/${course.id}`
   }
 
   if (compact) {

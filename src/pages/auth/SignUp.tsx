@@ -3,8 +3,8 @@
 import type React from "react"
 
 import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { createClient } from "../../lib/supabase/client"
 import { Button } from "../../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
@@ -18,7 +18,7 @@ export default function SignUp() {
   const [displayName, setDisplayName] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  const navigate = useNavigate()
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,7 +44,7 @@ export default function SignUp() {
         },
       })
       if (error) throw error
-      router.push("/auth/signup-success")
+      navigate("/auth/signup-success")
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {

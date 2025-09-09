@@ -44,6 +44,51 @@ const Courses = () => {
   const pathname = usePathname();
   const { toast } = useToast();
 
+  // derive an active course id from the pathname when the route is /courses/:id
+  const activeCourseId = (() => {
+    if (!pathname) return null;
+    const parts = pathname.split('/').filter(Boolean);
+    // parts[0] === 'courses', parts[1] === id
+    if (parts.length === 2 && parts[0] === 'courses') return parts[1];
+    return null;
+  })();
+
+  const closeCourseModal = () => {
+    // navigate back to /courses when closing modal
+    router.push('/courses');
+  };
+
+  const CourseDetailsContent = ({ courseId }: { courseId: string }) => {
+    const [course, setCourse] = useState<Course | null>(null);
+    const [loadingCourse, setLoadingCourse] = useState(true);
+
+    useEffect(() => {
+      const fetch = async () => {
+        try {
+          setLoadingCourse(true);
+          const c = await apiService.getCourseById(courseId);
+          setCourse(c as Course | null);
+        } catch (err) {
+          console.error('Failed to load course details', err);
+        } finally {
+          setLoadingCourse(false);
+        }
+      };
+      fetch();
+    }, [courseId]);
+
+    if (loadingCourse) return <div className="p-6">Loading...</div>;
+    if (!course) return <div className="p-6">Course not found.</div>;
+
+    return (
+      <div className="p-6">
+        <h2 className="text-2xl font-bold">{course.name}</h2>
+        {course.topic && <p className="text-sm text-muted-foreground">{course.topic}</p>}
+        <div className="mt-4 prose max-w-none">{course.content?.overview || course.description}</div>
+      </div>
+    );
+  };
+
   const form = useForm<CourseFormData>({
     resolver: zodResolver(courseSchema),
     defaultValues: {
@@ -217,7 +262,10 @@ const Courses = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredCourses.map((course) => (
                 <div key={course.id} className="relative group">
-                  <CourseCard course={course} />
+                  <CourseCard
+                    course={course}
+                    onClick={() => router.push(`/courses/${course.id}`)}
+                  />
                   <Button
                     variant="destructive"
                     size="sm"
@@ -238,6 +286,16 @@ const Courses = () => {
               ))}
             </div>
           )}
+
+          {/* Course details modal tied to route /courses/:id */}
+          <Dialog open={!!activeCourseId} onOpenChange={(open) => { if (!open) closeCourseModal(); }}>
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Course Details</DialogTitle>
+              </DialogHeader>
+              {activeCourseId && <CourseDetailsContent courseId={activeCourseId} />}
+            </DialogContent>
+          </Dialog>
 
           {!isLoading && filteredCourses.length === 0 && (
             <div className="text-center py-12">

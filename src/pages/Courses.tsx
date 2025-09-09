@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, usePathname } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { useNavigate, useLocation } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
 import CourseForm from "../components/course/CourseForm"
 import type { Course } from "../services/DataService"
@@ -22,10 +23,26 @@ const Courses = () => {
   const [isCreating, setIsCreating] = useState(false)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
-  const router = useRouter()
-  const pathname = usePathname()
+  const navigate = useNavigate()
+  const location = useLocation()
   const { toast } = useToast()
   const { user, loading: authLoading } = useAuth()
+
+  const form = useForm<any>({
+  defaultValues: {
+    name: "",
+    description: "",
+    topic: "",
+    difficulty: "",
+    content: {},          // jsonb
+    study_materials: [],  // array
+    quizzes: [],          // array
+    progress: 0,          // default
+    start_date: "",
+    end_date: "",
+  },
+})
+
 
   useEffect(() => {
     setMounted(true)
@@ -35,7 +52,7 @@ const Courses = () => {
     const initializeData = async () => {
       if (authLoading || !mounted) return // Wait for auth and mounting
       if (!user) {
-        router.push("/auth/login")
+        navigate("/auth/login")
         return
       }
 
@@ -57,47 +74,58 @@ const Courses = () => {
     }
 
     initializeData()
-  }, [toast, user, authLoading, router, mounted])
+  }, [toast, user, authLoading, mounted])
 
   useEffect(() => {
-    if (pathname === "/courses/new") {
+    if (location.pathname === "/courses/new") {
       setIsDialogOpen(true)
     }
-  }, [pathname])
-
-  const handleCreateCourse = async (
-    courseData: Omit<Course, "id" | "progress" | "studentsEnrolled" | "createdAt" | "updatedAt">,
-  ) => {
-    try {
-      setIsCreating(true)
-      const newCourse = await apiService.createCourse(courseData)
-      setCourses((prev) => [...prev, newCourse])
-      setIsDialogOpen(false)
-
-      if (pathname === "/courses/new") {
-        router.push("/courses")
-      }
-
-      toast({
-        title: "Success",
-        description: "Course created successfully",
-      })
-    } catch (error) {
-      console.error("Error creating course:", error)
-      toast({
-        title: "Error",
-        description: "Failed to create course. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCreating(false)
-    }
+  }, [location.pathname])
+const handleCreateCourse = async (
+  courseData: {
+    name: string
+    description?: string
+    topic?: string
+    difficulty?: string
+    content?: Record<string, any>
+    study_materials?: any[]
+    quizzes?: any[]
+    progress?: number
+    start_date?: string
+    end_date?: string
   }
+) => {
+  try {
+    setIsCreating(true)
+    const newCourse = await apiService.createCourse(courseData)
+    setCourses((prev) => [...prev, newCourse])
+    setIsDialogOpen(false)
+
+    if (location.pathname === "/courses/new") {
+      navigate("/courses")
+    }
+
+    toast({
+      title: "Success",
+      description: "Course created successfully",
+    })
+  } catch (error) {
+    console.error("Error creating course:", error)
+    toast({
+      title: "Error",
+      description: "Failed to create course. Please try again.",
+      variant: "destructive",
+    })
+  } finally {
+    setIsCreating(false)
+  }
+}
+
 
   const handleDialogChange = (open: boolean) => {
     setIsDialogOpen(open)
-    if (!open && pathname === "/courses/new") {
-      router.push("/courses")
+    if (!open && location.pathname === "/courses/new") {
+      navigate("/courses")
     }
   }
 
@@ -129,9 +157,8 @@ const Courses = () => {
   const filteredCourses = courses.filter(
     (course) =>
       course.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.description.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+      (course.description && course.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   if (!mounted) {
     return (
@@ -169,7 +196,11 @@ const Courses = () => {
               <DialogHeader>
                 <DialogTitle>Create New Course</DialogTitle>
               </DialogHeader>
-              <CourseForm onSubmit={handleCreateCourse} isSubmitting={isCreating} />
+              <CourseForm
+                form={form}
+                onSubmit={handleCreateCourse}
+                isLoading={isCreating}
+              />
             </DialogContent>
           </Dialog>
         </div>

@@ -3,8 +3,8 @@
 import type React from "react"
 
 import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { createClient } from "../../lib/supabase/client"
 import { Button } from "../../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
@@ -16,7 +16,7 @@ export default function Login() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  const navigate = useNavigate()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,7 +30,7 @@ export default function Login() {
         password,
       })
       if (error) throw error
-      router.push("/courses")
+      navigate("/courses")
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {

@@ -3,12 +3,11 @@
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Book, Home, Search, BookOpen, PenLine, Brain, LogOut } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { Link, useLocation } from "react-router-dom"
 import { useAuth } from "@/contexts/AuthContext"
 
 const Sidebar = () => {
-  const pathname = usePathname()
+  const location = useLocation()
   const { signOut } = useAuth()
 
   const menuItems = [
@@ -31,10 +30,10 @@ const Sidebar = () => {
             const Icon = item.icon
             return (
               <li key={item.path}>
-                <Link href={item.path}>
+                <Link to={item.path}>
                   <Button
                     variant="ghost"
-                    className={cn("w-full justify-start gap-2", pathname === item.path && "bg-accent")}
+                    className={cn("w-full justify-start gap-2", location.pathname === item.path && "bg-accent")}
                   >
                     <Icon className="h-4 w-4" />
                     {item.label}

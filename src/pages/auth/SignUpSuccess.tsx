@@ -1,4 +1,4 @@
-import Link from "next/link"
+import { Link } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 import { CheckCircle } from "lucide-react"
@@ -21,7 +21,7 @@ export default function SignUpSuccess() {
               sign in and start using Learnware.
             </p>
             <Button asChild className="w-full">
-              <Link href="/auth/login">Back to Sign In</Link>
+              <Link to="/auth/login">Back to Sign In</Link>
             </Button>
           </CardContent>
         </Card>

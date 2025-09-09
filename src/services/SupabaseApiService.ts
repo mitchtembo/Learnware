@@ -12,6 +12,7 @@ const supabaseApiService = {
     // Courses
     async getCourses(): Promise<Course[]> {
         const { data: { user } } = await supabase.auth.getUser();
+       // console.log("user", user);
         if (!user) return [];
 
         const { data, error } = await supabase

@@ -145,25 +145,41 @@ class GeminiService {
           The JSON response must include the following fields:
           - "overview": A comprehensive summary of what the course covers, its goals, and who it's for.
           - "learning_objectives": An array of 5-7 key skills or knowledge points students will gain.
-          - "key_topics": An array of 4-6 modules or sections, each with a "title" and a "description" that outlines what will be taught in that module.
-          - "prerequisites": An array of 2-4 recommended skills or courses to take before starting this one.
+          - "key_topics": An array of 4-6 modules or sections, each with a "title" and a "description".
+          - "prerequisites": An array of 2-4 recommended skills or courses.
+          - "study_materials": An array of 3-5 relevant articles, videos, or books, each with a "title" and a "url".
+          - "quizzes": An array of 2-3 quizzes, each covering a "topic" and containing an array of "questions". Each question should have "question_text", an array of "options", and an "answer".
 
           Example structure:
           {
             "overview": "This course provides a complete introduction to...",
             "learning_objectives": [
               "Understand the core principles of...",
-              "Develop practical skills in...",
-              ...
+              "Develop practical skills in..."
             ],
             "key_topics": [
               { "title": "Introduction to X", "description": "Learn the basics of..." },
-              { "title": "Advanced Techniques in Y", "description": "Explore complex concepts like..." },
-              ...
+              { "title": "Advanced Techniques in Y", "description": "Explore complex concepts like..." }
             ],
             "prerequisites": [
               "Basic understanding of...",
               "Familiarity with..."
+            ],
+            "study_materials": [
+              { "title": "Introductory Article", "url": "https://example.com/article" },
+              { "title": "Deep Dive Video", "url": "https://youtube.com/watch?v=123" }
+            ],
+            "quizzes": [
+              {
+                "topic": "Fundamentals of X",
+                "questions": [
+                  {
+                    "question_text": "What is the primary benefit of X?",
+                    "options": ["Benefit A", "Benefit B", "Benefit C"],
+                    "answer": "Benefit A"
+                  }
+                ]
+              }
             ]
           }
 
@@ -200,7 +216,44 @@ class GeminiService {
       return { error: "Invalid response format", text };
     }
   }
+
+  async generateCourseDescription(courseName: string): Promise<string> {
+    this.ensureInitialized();
+    const cacheKey = CacheService.generateGeminiKey("courseDescription", [courseName]);
+
+    try {
+      return await this.getCachedOrFetch(cacheKey, async () => {
+        const prompt = `
+          Generate a concise, engaging, one-paragraph course description for a course titled "${courseName}".
+          The description should be around 2-3 sentences long.
+          Return only the raw text of the description, without any markdown or extra formatting.
+        `;
+
+        const result = await this.model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+      });
+    } catch (error) {
+      const appError = ErrorHandler.handle(error);
+      ErrorHandler.logError(appError);
+      return "Failed to generate description.";
+    }
+  }
 }
 
 export const geminiService = new GeminiService();
-export const { generateCourseContent } = new GeminiService();
+
+// Provide a safe, bound helper that accepts either (courseName, courseTopic)
+// or a course object (as the page currently passes the whole course).
+export const generateCourseContent = (
+  courseOrName: any,
+  courseTopic?: string
+): Promise<any> => {
+  if (typeof courseOrName === "object" && courseOrName !== null) {
+    const name = courseOrName.name || courseOrName.title || "";
+    const topic = courseOrName.topic || courseOrName.subject || "";
+    return geminiService.generateCourseContent(name, topic);
+  }
+
+  return geminiService.generateCourseContent(courseOrName, courseTopic || "");
+};

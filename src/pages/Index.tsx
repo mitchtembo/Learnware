@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import MainLayout from "../layouts/MainLayout"
 import { apiService } from "../services/ApiServiceAdapter"
 import type { Course } from "../services/DataService"
@@ -38,7 +38,7 @@ const Index = () => {
     totalQuizzes: 0,
     averageProgress: 0,
   })
-  const router = useRouter()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const { user, loading: authLoading } = useAuth()
 
@@ -89,7 +89,15 @@ const Index = () => {
     fetchData()
   }, [toast, user, authLoading, mounted])
 
-  const recentCourses = [...courses].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 3)
+  // Helper to tolerate different date shapes (createdAt or created_at) and missing values
+  const dateOf = (c: any) => {
+    const raw = c?.createdAt ?? c?.created_at ?? null
+    if (!raw) return 0
+    const d = raw instanceof Date ? raw : new Date(raw)
+    return isNaN(d.getTime()) ? 0 : d.getTime()
+  }
+
+  const recentCourses = [...courses].sort((a, b) => dateOf(b) - dateOf(a)).slice(0, 3)
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
@@ -125,10 +133,10 @@ const Index = () => {
             </div>
             <p className="text-xl text-muted-foreground mb-8">Study faster. Understand deeper.</p>
             <div className="flex gap-4 justify-center">
-              <Button size="lg" onClick={() => router.push("/auth/signup")}>
+              <Button size="lg" onClick={() => navigate("/auth/signup")}>
                 Get Started
               </Button>
-              <Button variant="outline" size="lg" onClick={() => router.push("/auth/login")}>
+              <Button variant="outline" size="lg" onClick={() => navigate("/auth/login")}>
                 Sign In
               </Button>
             </div>
@@ -150,11 +158,11 @@ const Index = () => {
             <p className="text-muted-foreground mt-1">Study faster. Understand deeper.</p>
           </div>
           <div className="flex gap-3">
-            <Button onClick={() => router.push("/courses/new")}>
+            <Button onClick={() => navigate("/courses/new")}>
               <PlusCircle className="h-4 w-4 mr-2" />
               New Course
             </Button>
-            <Button variant="outline" onClick={() => router.push("/notes/new")}>
+            <Button variant="outline" onClick={() => navigate("/notes/new")}>
               <PenLine className="h-4 w-4 mr-2" />
               New Note
             </Button>
@@ -217,7 +225,7 @@ const Index = () => {
                       <BookOpen className="h-5 w-5 text-primary" />
                       <h2 className="text-xl font-semibold">Recent Courses</h2>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => router.push("/courses")}>
+                    <Button variant="ghost" size="sm" onClick={() => navigate("/courses")}>
                       View All
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -233,7 +241,7 @@ const Index = () => {
                     <div className="text-center py-8 text-muted-foreground">
                       <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-20" />
                       <p>No courses found. Create your first course to get started!</p>
-                      <Button className="mt-4" onClick={() => router.push("/courses/new")}>
+                      <Button className="mt-4" onClick={() => navigate("/courses/new")}>
                         Create a Course
                       </Button>
                     </div>
@@ -320,7 +328,7 @@ const Index = () => {
                   </div>
 
                   <div className="mt-4">
-                    <Button className="w-full" onClick={() => router.push("/courses/new")}>
+                    <Button className="w-full" onClick={() => navigate("/courses/new")}>
                       <PlusCircle className="h-4 w-4 mr-2" />
                       Start Your First Course
                     </Button>
