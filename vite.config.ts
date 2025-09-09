@@ -8,6 +8,7 @@ const srcPath = fileURLToPath(new URL('./src', import.meta.url))
 
 export default defineConfig({
   plugins: [react()],
+  publicDir: 'public',
   resolve: {
     alias: {
       '@': srcPath,
@@ -15,5 +16,10 @@ export default defineConfig({
   },
   define: {
     'process.env': {}
+  },
+  build: {
+    rollupOptions: {
+      // nothing custom yet
+    }
   }
 })

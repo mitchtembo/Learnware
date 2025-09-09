@@ -1,0 +1,34 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/courses/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/notes"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/study"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/research"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/search"
+  to = "/index.html"
+  status = 200
+
+# catch-all
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
